@@ -1,0 +1,52 @@
+{
+  "language": "css",
+  "challenges": {
+    "EASY": [
+      {"id": "cs_e_01", "code": "color: red;", "hint": "Text colour", "points": 62},
+      {"id": "cs_e_02", "code": "margin: 0;", "hint": "No margin", "points": 60},
+      {"id": "cs_e_03", "code": "padding: 8px;", "hint": "Inner spacing", "points": 66},
+      {"id": "cs_e_04", "code": "border: 1px solid;", "hint": "A border", "points": 76},
+      {"id": "cs_e_05", "code": "font-size: 14px;", "hint": "Text size", "points": 72},
+      {"id": "cs_e_06", "code": "text-align: center;", "hint": "Centre text", "points": 78},
+      {"id": "cs_e_07", "code": "display: block;", "hint": "Block display", "points": 70},
+      {"id": "cs_e_08", "code": "width: 100%;", "hint": "Full width", "points": 64},
+      {"id": "cs_e_09", "code": "background: #222;", "hint": "Background colour", "points": 74},
+      {"id": "cs_e_10", "code": "cursor: pointer;", "hint": "Pointer cursor", "points": 72}
+    ],
+    "MEDIUM": [
+      {"id": "cs_m_01", "code": "margin: 0 auto;", "hint": "Centre a block", "points": 90},
+      {"id": "cs_m_02", "code": "box-shadow: 0 2px 8px #0006;", "hint": "A soft shadow", "points": 116},
+      {"id": "cs_m_03", "code": "grid-template-columns: 1fr 1fr;", "hint": "Two equal columns", "points": 122},
+      {"id": "cs_m_04", "code": "transition: opacity .2s;", "hint": "Fade on change", "points": 108},
+      {"id": "cs_m_05", "code": "font-family: \"Segoe UI\", sans-serif;", "hint": "Font stack", "points": 132},
+      {"id": "cs_m_06", "code": "border-radius: 8px;", "hint": "Rounded corners", "points": 98},
+      {"id": "cs_m_07", "code": "position: absolute; top: 0;", "hint": "Pin to the top", "points": 114},
+      {"id": "cs_m_08", "code": "transform: rotate(4deg);", "hint": "Tilt an element", "points": 108},
+      {"id": "cs_m_09", "code": "flex: 1 1 auto;", "hint": "Share the row", "points": 90},
+      {"id": "cs_m_10", "code": "overflow: hidden;", "hint": "Clip the overflow", "points": 94}
+    ],
+    "HARD": [
+      {"id": "cs_h_01", "code": "@media (max-width: 600px) { .n { display: none; } }", "hint": "Hide on small screens", "points": 202},
+      {"id": "cs_h_02", "code": ".card:hover { transform: translateY(-2px); }", "hint": "Lift on hover", "points": 188},
+      {"id": "cs_h_03", "code": "animation: spin 1.2s linear infinite;", "hint": "Spin forever", "points": 174},
+      {"id": "cs_h_04", "code": "background: linear-gradient(135deg, #0ff, #f0f);", "hint": "A gradient wash", "points": 196},
+      {"id": "cs_h_05", "code": "gap: 8px 16px;", "hint": "Row and column gaps", "points": 128},
+      {"id": "cs_h_06", "code": "aspect-ratio: 16 / 9;", "hint": "A 16:9 box", "points": 142},
+      {"id": "cs_h_07", "code": "mask-image: linear-gradient(#000, transparent);", "hint": "Fade out with a mask", "points": 194},
+      {"id": "cs_h_08", "code": "will-change: transform, opacity;", "hint": "Hint the compositor", "points": 164},
+      {"id": "cs_h_09", "code": "clip-path: polygon(0 0, 100% 0, 50% 100%);", "hint": "Clip to a triangle", "points": 184},
+      {"id": "cs_h_10", "code": "backdrop-filter: blur(4px);", "hint": "Blur what is behind", "points": 154}
+    ],
+    "EXPERT": [
+      {"id": "cs_x_01", "code": ":root { --brand: #0ff; --gap: 8px; }", "hint": "Custom properties", "points": 328},
+      {"id": "cs_x_02", "code": "transition: transform .35s ease-in-out;", "hint": "Eased transitions", "points": 337},
+      {"id": "cs_x_03", "code": ".g { display: grid; grid-auto-flow: column; }", "hint": "A column grid", "points": 355},
+      {"id": "cs_x_04", "code": "@supports (display: grid) { .g { display: grid; } }", "hint": "Feature query", "points": 373},
+      {"id": "cs_x_05", "code": "background-image: url(\"a.png\"), url(\"b.png\");", "hint": "Two images", "points": 355},
+      {"id": "cs_x_06", "code": "text-shadow: 0 0 4px #0ff, 0 0 12px #0f8;", "hint": "Neon glow text", "points": 343}
+    ],
+    "BOSS": [
+      {"id": "cs_b_01", "code": "background: conic-gradient(#0ff, #f0f, #0ff);", "hint": "A conic sweep", "points": 600}
+    ]
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "width": 1920,
+  "height": 1080,
+  "fullscreen": true,
+  "master_volume": 0.8,
+  "music_volume": 0.5,
+  "sfx_volume": 0.8,
+  "typing_effects": true,
+  "screen_shake": true
+}

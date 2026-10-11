@@ -1,0 +1,63 @@
+{
+  "language": "mixed",
+  "challenges": {
+    "EASY": [
+      {"id": "mx_e_01", "code": "print(\"hello world\")", "hint": "Say hello", "points": 80},
+      {"id": "mx_e_02", "code": "name = \"player\"", "hint": "Name a variable", "points": 70},
+      {"id": "mx_e_03", "code": "score += 100", "hint": "Add to a score", "points": 64},
+      {"id": "mx_e_04", "code": "items.append(3)", "hint": "Append to a list", "points": 70},
+      {"id": "mx_e_05", "code": "console.log(total)", "hint": "Log a total", "points": 76},
+      {"id": "mx_e_06", "code": "let count = 0", "hint": "Declare a counter", "points": 66},
+      {"id": "mx_e_07", "code": "id: 42", "hint": "A YAML key", "points": 52},
+      {"id": "mx_e_08", "code": "npm run build", "hint": "Run a build", "points": 66},
+      {"id": "mx_e_09", "code": "fn main() { println!(\"hi\"); }", "hint": "A Rust entry point", "points": 98},
+      {"id": "mx_e_10", "code": "git status --short", "hint": "Short git status", "points": 76}
+    ],
+    "MEDIUM": [
+      {"id": "mx_m_01", "code": "print(f\"{name}: {score}\")", "hint": "Formatted Python print", "points": 110},
+      {"id": "mx_m_02", "code": "data = json.loads(text)", "hint": "Parse JSON", "points": 106},
+      {"id": "mx_m_03", "code": "result = list(filter(None, values))", "hint": "Drop the empty values", "points": 130},
+      {"id": "mx_m_04", "code": "const total = items.reduce((a, b) => a + b, 0);", "hint": "Sum the prices", "points": 154},
+      {"id": "mx_m_05", "code": "const found = list.find(x => x.id === id) ?? null;", "hint": "Find or null", "points": 160},
+      {"id": "mx_m_06", "code": "if err != nil { return err }", "hint": "Return a Go error", "points": 116},
+      {"id": "mx_m_07", "code": "match v { Some(x) => x, None => 0 }", "hint": "A Rust match", "points": 130},
+      {"id": "mx_m_08", "code": "<button onClick={save}>Save</button>", "hint": "A React button", "points": 132},
+      {"id": "mx_m_09", "code": "title: \"Player One\"", "hint": "A YAML title", "points": 98},
+      {"id": "mx_m_10", "code": "docker run -p 8080:80 app", "hint": "Run a container", "points": 110}
+    ],
+    "HARD": [
+      {"id": "mx_h_01", "code": "rows = sorted(d, key=lambda r: r[\"s\"])[::-1]", "hint": "Best first", "points": 188},
+      {"id": "mx_h_02", "code": "const byId = new Map(items.map(i => [i.id, i]));", "hint": "Index items by id", "points": 196},
+      {"id": "mx_h_03", "code": "async function load(u) { return fetch(u).json(); }", "hint": "Fetch and parse", "points": 200},
+      {"id": "mx_h_04", "code": "let n = 0; for (const x of xs) n += x * 2;", "hint": "Double every value", "points": 184},
+      {"id": "mx_h_05", "code": "go func() { defer wg.Done(); work(ctx) }()", "hint": "A tracked goroutine", "points": 184},
+      {"id": "mx_h_06", "code": "if err := save(r); err != nil { return err }", "hint": "Guard a save", "points": 188},
+      {"id": "mx_h_07", "code": "fn parse(s: &str) -> Result<i32, Error> { s.parse() }", "hint": "Parse into a Result", "points": 206},
+      {"id": "mx_h_08", "code": "const m = new Map(Object.entries(o));", "hint": "Build a Map from an object", "points": 174},
+      {"id": "mx_h_09", "code": "merged = { ...defaults, ...user };", "hint": "Merge two objects", "points": 168},
+      {"id": "mx_h_10", "code": "<input value={n} onChange={set} />", "hint": "A controlled input", "points": 168},
+      {"id": "mx_h_11", "code": "services: [api, worker, db]", "hint": "Compose services", "points": 154},
+      {"id": "mx_h_12", "code": "kubectl get pods -n prod", "hint": "List the pods", "points": 148},
+      {"id": "mx_h_13", "code": "items = [x.strip() for x in text.splitlines()]", "hint": "Trim every line", "points": 192},
+      {"id": "mx_h_14", "code": "const u = new URLSearchParams(qs);", "hint": "Read query params", "points": 168}
+    ],
+    "EXPERT": [
+      {"id": "mx_x_01", "code": "const [s, set] = useReducer(reducer, init);", "hint": "A reducer hook", "points": 349},
+      {"id": "mx_x_02", "code": "useEffect(() => { on(); }, []);", "hint": "Run once on mount", "points": 313},
+      {"id": "mx_x_03", "code": "results := make(chan Result, len(jobs));", "hint": "A buffered channel", "points": 340},
+      {"id": "mx_x_04", "code": "data, err := json.Marshal(v)", "hint": "Marshal to JSON", "points": 304},
+      {"id": "mx_x_05", "code": "let sum = xs.iter().map(|x| x * 2).sum::<i32>();", "hint": "Sum of doubles", "points": 364},
+      {"id": "mx_x_06", "code": "const m = useMemo(() => pick(a), [a]);", "hint": "A memoised pick", "points": 334},
+      {"id": "mx_x_07", "code": "python -m http.server 8000", "hint": "Serve this folder", "points": 298},
+      {"id": "mx_x_08", "code": "match tok { Some(v) => v, None => -1 }", "hint": "Match a token", "points": 334},
+      {"id": "mx_x_09", "code": "const top = [...xs].sort(by).slice(0, 5);", "hint": "Top five", "points": 343},
+      {"id": "mx_x_10", "code": "image: python:3.12-slim", "hint": "A base image", "points": 289},
+      {"id": "mx_x_11", "code": "df -h | awk '$5+0 > 80'", "hint": "Disks over 80% full", "points": 289},
+      {"id": "mx_x_12", "code": "const p = data.map(d => d?.n ?? 0);", "hint": "Optional chaining", "points": 325},
+      {"id": "mx_x_13", "code": "git log --oneline -10", "hint": "Recent commits", "points": 283}
+    ],
+    "BOSS": [
+      {"id": "mx_b_01", "code": "const r = await Promise.allSettled(jobs);", "hint": "Every job, no throws", "points": 584}
+    ]
+  }
+}

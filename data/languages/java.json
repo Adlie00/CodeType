@@ -1,0 +1,52 @@
+{
+  "language": "java",
+  "challenges": {
+    "EASY": [
+      {"id": "jv_e_01", "code": "int n = 10;", "hint": "Declare an int", "points": 62},
+      {"id": "jv_e_02", "code": "String s = \"hi\";", "hint": "Declare a String", "points": 72},
+      {"id": "jv_e_03", "code": "double d = 1.5;", "hint": "Declare a double", "points": 70},
+      {"id": "jv_e_04", "code": "boolean b = true;", "hint": "Declare a boolean", "points": 74},
+      {"id": "jv_e_05", "code": "char c = 'x';", "hint": "Declare a char", "points": 66},
+      {"id": "jv_e_06", "code": "n = n + 5;", "hint": "Add to a variable", "points": 60},
+      {"id": "jv_e_07", "code": "System.out.println(s);", "hint": "Print to console", "points": 84},
+      {"id": "jv_e_08", "code": "int[] a = new int[3];", "hint": "Declare an array", "points": 82},
+      {"id": "jv_e_09", "code": "a[0] = 1;", "hint": "Set an array slot", "points": 58},
+      {"id": "jv_e_10", "code": "String t = s + \"!\";", "hint": "Join strings", "points": 78}
+    ],
+    "MEDIUM": [
+      {"id": "jv_m_01", "code": "List<String> n = new ArrayList<>();", "hint": "Declare a list", "points": 130},
+      {"id": "jv_m_02", "code": "n.add(\"a\"); n.add(\"b\");", "hint": "Add two items", "points": 106},
+      {"id": "jv_m_03", "code": "int c = n.size();", "hint": "List size", "points": 94},
+      {"id": "jv_m_04", "code": "String j = String.join(\", \", n);", "hint": "Join with commas", "points": 124},
+      {"id": "jv_m_05", "code": "Map<String, Integer> m = new HashMap<>();", "hint": "Declare a map", "points": 142},
+      {"id": "jv_m_06", "code": "m.put(\"id\", 7);", "hint": "Put into a map", "points": 90},
+      {"id": "jv_m_07", "code": "int v = m.getOrDefault(\"id\", 0);", "hint": "Read with a default", "points": 124},
+      {"id": "jv_m_08", "code": "if (n.isEmpty()) return;", "hint": "Bail out early", "points": 108},
+      {"id": "jv_m_09", "code": "String u = String.format(\"%s: %d\", s, n);", "hint": "Formatted string", "points": 142},
+      {"id": "jv_m_10", "code": "n.replaceAll(s, t);", "hint": "Replace every match", "points": 98}
+    ],
+    "HARD": [
+      {"id": "jv_h_01", "code": "n.sort(Comparator.comparing(String::length));", "hint": "Sort by length", "points": 190},
+      {"id": "jv_h_02", "code": "n.removeIf(String::isBlank);", "hint": "Drop blank items", "points": 156},
+      {"id": "jv_h_03", "code": "long total = n.stream().mapToLong(String::length).sum();", "hint": "Total length", "points": 212},
+      {"id": "jv_h_04", "code": "Optional<T> f = n.stream().filter(T::ok).findFirst();", "hint": "First good match", "points": 206},
+      {"id": "jv_h_05", "code": "String b = new StringBuilder().append(s).toString();", "hint": "Build a string", "points": 204},
+      {"id": "jv_h_06", "code": "var r = IntStream.rangeClosed(1, 9).boxed().toList();", "hint": "One to nine as a list", "points": 206},
+      {"id": "jv_h_07", "code": "Runnable task = () -> log(\"done\");", "hint": "A lambda task", "points": 168},
+      {"id": "jv_h_08", "code": "n.forEach(x -> log(x.value()));", "hint": "Log every value", "points": 162},
+      {"id": "jv_h_09", "code": "T best = list.stream().max(cmp).orElse(null);", "hint": "Biggest", "points": 190},
+      {"id": "jv_h_10", "code": "var m = new TreeMap<Integer, String>();", "hint": "A sorted map", "points": 178}
+    ],
+    "EXPERT": [
+      {"id": "jv_x_01", "code": "String j = String.join(\", \", names);", "hint": "Join names", "points": 328},
+      {"id": "jv_x_02", "code": "var g = n.stream().collect(Collectors.toSet());", "hint": "Collect to a Set", "points": 361},
+      {"id": "jv_x_03", "code": "allOf(a, b).thenRun(() -> log(\"done\"));", "hint": "Run after both", "points": 337},
+      {"id": "jv_x_04", "code": "try (var s = Files.readString(p)) { use(s); }", "hint": "Read, then close", "points": 355},
+      {"id": "jv_x_05", "code": "var s = n.stream().mapToInt(String::length).sum();", "hint": "Sum of lengths", "points": 370},
+      {"id": "jv_x_06", "code": "Function<T, String> k = o -> o.id();", "hint": "A key function", "points": 328}
+    ],
+    "BOSS": [
+      {"id": "jv_b_01", "code": "var top = list.stream().sorted().reversed().toList();", "hint": "Sorted", "points": 632}
+    ]
+  }
+}

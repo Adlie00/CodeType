@@ -1,0 +1,112 @@
+{
+  "waves": [
+    {
+      "wave_number": 1,
+      "language": "html",
+      "display_name": "HTML",
+      "difficulty_progression": ["EASY", "MEDIUM"],
+      "enemy_count": 12,
+      "boss_wave": false,
+      "spawn_interval": 4.0,
+      "description": "HyperText Markup Language — The skeleton of the web."
+    },
+    {
+      "wave_number": 2,
+      "language": "css",
+      "display_name": "CSS",
+      "difficulty_progression": ["EASY", "MEDIUM"],
+      "enemy_count": 14,
+      "boss_wave": false,
+      "spawn_interval": 3.8,
+      "description": "Cascading Style Sheets — Style the web."
+    },
+    {
+      "wave_number": 3,
+      "language": "javascript",
+      "display_name": "JavaScript",
+      "difficulty_progression": ["EASY", "MEDIUM", "HARD"],
+      "enemy_count": 16,
+      "boss_wave": true,
+      "boss_language": "javascript",
+      "spawn_interval": 3.5,
+      "description": "JavaScript — Bring the web to life."
+    },
+    {
+      "wave_number": 4,
+      "language": "python",
+      "display_name": "Python",
+      "difficulty_progression": ["MEDIUM", "HARD"],
+      "enemy_count": 16,
+      "boss_wave": false,
+      "spawn_interval": 3.3,
+      "description": "Python — Readable. Powerful. Elegant."
+    },
+    {
+      "wave_number": 5,
+      "language": "java",
+      "display_name": "Java",
+      "difficulty_progression": ["MEDIUM", "HARD"],
+      "enemy_count": 18,
+      "boss_wave": true,
+      "boss_language": "java",
+      "spawn_interval": 3.0,
+      "description": "Java — Write once, run anywhere."
+    },
+    {
+      "wave_number": 6,
+      "language": "c",
+      "display_name": "C",
+      "difficulty_progression": ["MEDIUM", "HARD"],
+      "enemy_count": 18,
+      "boss_wave": false,
+      "spawn_interval": 2.8,
+      "description": "C — Close to the machine."
+    },
+    {
+      "wave_number": 7,
+      "language": "cpp",
+      "display_name": "C++",
+      "difficulty_progression": ["MEDIUM", "HARD", "EXPERT"],
+      "enemy_count": 20,
+      "boss_wave": true,
+      "boss_language": "cpp",
+      "spawn_interval": 2.6,
+      "description": "C++ — Power and performance."
+    },
+    {
+      "wave_number": 8,
+      "language": "csharp",
+      "display_name": "C#",
+      "difficulty_progression": ["HARD", "EXPERT"],
+      "enemy_count": 20,
+      "boss_wave": false,
+      "spawn_interval": 2.4,
+      "description": "C# — Modern. Versatile. Expressive."
+    },
+    {
+      "wave_number": 9,
+      "language": "sql",
+      "display_name": "SQL",
+      "difficulty_progression": ["MEDIUM", "HARD", "EXPERT"],
+      "enemy_count": 20,
+      "boss_wave": true,
+      "boss_language": "sql",
+      "spawn_interval": 2.2,
+      "description": "SQL — Query the world."
+    },
+    {
+      "wave_number": 10,
+      "language": "mixed",
+      "display_name": "MIXED",
+      "difficulty_progression": ["HARD", "EXPERT"],
+      "enemy_count": 25,
+      "boss_wave": true,
+      "boss_language": "mixed",
+      "spawn_interval": 2.0,
+      "description": "All languages. Maximum chaos. Prove yourself."
+    }
+  ],
+  "endless_base_interval": 4.0,
+  "endless_interval_decay": 0.05,
+  "endless_min_interval": 1.0
+}

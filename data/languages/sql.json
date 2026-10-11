@@ -1,0 +1,52 @@
+{
+  "language": "sql",
+  "challenges": {
+    "EASY": [
+      {"id": "sq_e_01", "code": "SELECT 1;", "hint": "A constant", "points": 58},
+      {"id": "sq_e_02", "code": "SELECT id FROM users;", "hint": "One column", "points": 82},
+      {"id": "sq_e_03", "code": "SELECT * FROM runs;", "hint": "Everything", "points": 78},
+      {"id": "sq_e_04", "code": "SELECT COUNT(*) FROM logs;", "hint": "Count rows", "points": 92},
+      {"id": "sq_e_05", "code": "SELECT name FROM pets WHERE id = 1;", "hint": "One row", "points": 110},
+      {"id": "sq_e_06", "code": "SELECT id, name FROM pets;", "hint": "Two columns", "points": 92},
+      {"id": "sq_e_07", "code": "SELECT MAX(score) FROM runs;", "hint": "The best score", "points": 96},
+      {"id": "sq_e_08", "code": "SELECT * FROM t LIMIT 10;", "hint": "First ten rows", "points": 90},
+      {"id": "sq_e_09", "code": "SELECT DISTINCT kind FROM items;", "hint": "Unique kinds", "points": 104},
+      {"id": "sq_e_10", "code": "SELECT 1 + 2 * 3;", "hint": "Operator order", "points": 74}
+    ],
+    "MEDIUM": [
+      {"id": "sq_m_01", "code": "SELECT name FROM users WHERE age >= 18;", "hint": "Adults", "points": 138},
+      {"id": "sq_m_02", "code": "SELECT * FROM runs WHERE score > 100;", "hint": "Good runs", "points": 134},
+      {"id": "sq_m_03", "code": "SELECT COUNT(DISTINCT uid) FROM events;", "hint": "Distinct users", "points": 138},
+      {"id": "sq_m_04", "code": "SELECT * FROM pets WHERE name LIKE 'a%';", "hint": "Names starting with a", "points": 140},
+      {"id": "sq_m_05", "code": "SELECT id FROM t WHERE id IN (1, 2, 3);", "hint": "Match a set", "points": 138},
+      {"id": "sq_m_06", "code": "SELECT MIN(v), MAX(v) FROM t;", "hint": "Smallest and largest", "points": 118},
+      {"id": "sq_m_07", "code": "SELECT kind, AVG(score) FROM runs GROUP BY kind;", "hint": "Average per kind", "points": 156},
+      {"id": "sq_m_08", "code": "UPDATE users SET active = false WHERE id = 9;", "hint": "Deactivate one user", "points": 150},
+      {"id": "sq_m_09", "code": "INSERT INTO pets (name) VALUES ('Rex');", "hint": "Insert a row", "points": 138},
+      {"id": "sq_m_10", "code": "DELETE FROM logs WHERE ts < '2025-01-01';", "hint": "Delete old logs", "points": 142}
+    ],
+    "HARD": [
+      {"id": "sq_h_01", "code": "SELECT r.id FROM runs r JOIN s ON s.run = r.id;", "hint": "Join two tables", "points": 194},
+      {"id": "sq_h_02", "code": "SELECT name FROM runs ORDER BY score DESC;", "hint": "Best first", "points": 184},
+      {"id": "sq_h_03", "code": "WITH t AS (SELECT * FROM logs) SELECT COUNT(*) FROM t;", "hint": "A CTE, then count", "points": 208},
+      {"id": "sq_h_04", "code": "SELECT u.id FROM users u LEFT JOIN b ON b.u = u.id;", "hint": "Join, keep the misses", "points": 202},
+      {"id": "sq_h_05", "code": "INSERT INTO a SELECT * FROM b WHERE n > 1000;", "hint": "Insert from a select", "points": 190},
+      {"id": "sq_h_06", "code": "UPDATE t SET v = v + 1 WHERE id IN (SELECT id FROM h);", "hint": "Update from a subquery", "points": 208},
+      {"id": "sq_h_07", "code": "CREATE INDEX i ON runs (mode, score DESC);", "hint": "A covering index", "points": 184},
+      {"id": "sq_h_08", "code": "SELECT * FROM t FOR UPDATE SKIP LOCKED;", "hint": "Claim a work row", "points": 178},
+      {"id": "sq_h_09", "code": "SELECT tag FROM posts, UNNEST(tags) AS tag;", "hint": "Explode an array", "points": 186},
+      {"id": "sq_h_10", "code": "SELECT a.id FROM a JOIN b USING (id) WHERE c.v IS NULL;", "hint": "Join on a shared column", "points": 210}
+    ],
+    "EXPERT": [
+      {"id": "sq_x_01", "code": "SELECT percentile_cont(0.95) WITHIN GROUP (ORDER BY ms);", "hint": "The 95th percentile", "points": 388},
+      {"id": "sq_x_02", "code": "SELECT jsonb_path_query_array(p, '$.id') FROM o;", "hint": "Pull ids from JSON", "points": 364},
+      {"id": "sq_x_03", "code": "SELECT count(*) FILTER (WHERE ok) FROM runs;", "hint": "Count the good ones", "points": 352},
+      {"id": "sq_x_04", "code": "EXPLAIN ANALYZE SELECT * FROM runs WHERE mode = 'x';", "hint": "Explain a query", "points": 376},
+      {"id": "sq_x_05", "code": "SELECT * FROM a INTERSECT SELECT * FROM b;", "hint": "Rows in both", "points": 346},
+      {"id": "sq_x_06", "code": "SELECT * FROM t WHERE ts > NOW() - INTERVAL '1 day';", "hint": "The last day", "points": 376}
+    ],
+    "BOSS": [
+      {"id": "sq_b_01", "code": "SELECT count(*) FROM reqs GROUP BY day;", "hint": "Per day", "points": 576}
+    ]
+  }
+}
