@@ -7,10 +7,13 @@ state, which is a normal screen so it gets the same chrome as everything else.
 
 from __future__ import annotations
 
+import sqlite3
+
 import pygame
 
 from game.constants import (
     HAIRLINE_DIM,
+    MODE_ENDLESS,
     NEON_RED,
     TARGET_FPS,
     TEXT_BRIGHT,
@@ -55,6 +58,7 @@ class GameScreen:
                 mode=mode,
                 player_name=player_name,
                 difficulty=difficulty,
+                leaderboard=leaderboard,
             )
         except (ContentError, OSError, ValueError) as exc:
             self._error = str(exc)
@@ -112,6 +116,10 @@ class GameScreen:
                 self._game.update(dt)
                 self._game.draw(self._screen)
                 if self._game.return_to_menu:
+                    if self._mode == MODE_ENDLESS:
+                        # Endless never ends on its own, so quitting is the only
+                        # way to bank a run: record it before heading back.
+                        self._save_run()
                     return self._to_menu()
                 if self._game.finished:
                     from screens.game_over_screen import GameOverScreen
@@ -125,6 +133,25 @@ class GameScreen:
                         self._game.stats(),
                     )
             pygame.display.flip()
+
+    def _save_run(self) -> None:
+        """Bank an abandoned run's score, mirroring the game-over save."""
+        if self._leaderboard is None or self._game is None:
+            return
+        stats = self._game.stats()
+        try:
+            self._leaderboard.save_score(
+                player_name=str(stats.get("player_name", "PLAYER")),
+                score=int(stats.get("score", 0)),
+                wpm=float(stats.get("wpm", 0.0)),
+                accuracy=float(stats.get("accuracy", 0.0)),
+                max_combo=int(stats.get("max_combo", 0)),
+                waves=int(stats.get("waves", 0)),
+                enemies=int(stats.get("enemies", 0)),
+                mode=str(stats.get("mode", "campaign")),
+            )
+        except (OSError, sqlite3.Error, TypeError, ValueError):
+            pass
 
     def _to_menu(self):
         from screens.main_menu import MainMenuScreen

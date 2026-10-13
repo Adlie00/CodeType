@@ -17,6 +17,7 @@ from game.constants import (
     MIN_SPAWN_INTERVAL,
     MODE_CAMPAIGN,
     MODE_COMPETITION,
+    MODE_WARMUP,
     SPAWN_PACING_CPS,
 )
 from game.boss import Boss
@@ -99,6 +100,11 @@ class WaveManager:
     @property
     def is_campaign(self) -> bool:
         return self._is_campaign
+
+    @property
+    def _mode_suffix(self) -> str:
+        """The label endless-family modes stamp on their generated wave names."""
+        return "WARMUP" if self._mode == MODE_WARMUP else "ENDLESS"
 
     @property
     def current_wave(self) -> WaveConfig:
@@ -197,7 +203,7 @@ class WaveManager:
             boss_wave=False,
             boss_language=None,
             spawn_interval=self._content.endless_base_interval,
-            description="Endless challenge",
+            description=f"{self._mode_suffix.title()} challenge",
         )
         self._prepare_wave()
         return True
@@ -257,7 +263,7 @@ class WaveManager:
         return WaveConfig(
             wave_number=1,
             language=base.language,
-            display_name=f"{base.display_name} ENDLESS",
+            display_name=f"{base.display_name} {self._mode_suffix}",
             difficulty_progression=(
                 difficulty_for_endless(1, self._start_difficulty),
             ),
@@ -265,7 +271,7 @@ class WaveManager:
             boss_wave=False,
             boss_language=None,
             spawn_interval=self._content.endless_base_interval,
-            description="Endless challenge",
+            description=f"{self._mode_suffix.title()} challenge",
         )
 
     def _prepare_wave(self) -> None:

@@ -72,6 +72,39 @@ class LeaderboardTopTenTests(unittest.TestCase):
         self.assertEqual(self._count(), TOP_LIMIT)
         self.assertTrue(self._save(501))
 
+    def _save_mode(self, name: str, score: int, mode: str) -> bool:
+        return self.board.save_score(
+            player_name=name, score=score, wpm=70.0, accuracy=98.0,
+            max_combo=9, waves=3, enemies=30, mode=mode,
+        )
+
+    def test_get_top_can_restrict_to_a_single_mode(self) -> None:
+        self._save_mode("CAM", 100, "campaign")
+        self._save_mode("END", 200, "endless")
+        self._save_mode("COMP_LO", 150, "competition")
+        self._save_mode("COMP_HI", 300, "competition")
+
+        competition = self.board.get_top(10, "score", mode="competition")
+        self.assertEqual(
+            [row["score"] for row in competition], [300, 150]
+        )
+        self.assertTrue(
+            all(row["mode"] == "competition" for row in competition)
+        )
+
+        # Omitting the mode still returns the board-wide top.
+        board_wide = self.board.get_top(10, "score")
+        self.assertEqual(board_wide[0]["score"], 300)
+        self.assertEqual(len(board_wide), 4)
+
+    def test_get_top_mode_filter_applies_the_limit_after_filtering(self) -> None:
+        for index in range(5):
+            self._save_mode(f"COMP{index}", 1000 + index, "competition")
+        self._save_mode("CAM", 9999, "campaign")
+
+        top_two = self.board.get_top(2, "score", mode="competition")
+        self.assertEqual([row["score"] for row in top_two], [1004, 1003])
+
     def test_startup_trims_a_legacy_overfull_database(self) -> None:
         conn = sqlite3.connect(self._db_path)
         conn.execute(

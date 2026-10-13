@@ -100,6 +100,7 @@ triggering a flash. Boss kills are worth 3× score.
 | **Campaign** | The 10-wave ladder below. Clearing wave 10 wins the run. |
 | **Endless** | Procedurally generated waves that keep getting faster (spawn interval decays from 4.0s toward a 1.0s floor). A boss appears every 20 kills. Survive as long as you can. |
 | **Competition** | The same 10 waves as Campaign, scored and recorded separately on the leaderboard. |
+| **Warmup** | A 30-second, unscored practice run with no lives. When the clock runs out it shows a summary; runs are never recorded on the leaderboard. |
 
 ## The campaign ladder
 

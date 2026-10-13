@@ -9,6 +9,8 @@ import pygame
 from game.constants import (
     DIFFICULTY_EASY,
     HAIRLINE_DIM,
+    MODE_COMPETITION,
+    MODE_WARMUP,
     NEON_CYAN,
     NEON_GREEN,
     NEON_ORANGE,
@@ -39,9 +41,10 @@ _SECONDARY = (
 )
 
 # Outcome of the attempt to write this run to the leaderboard.
-_SAVE_SAVED    = "saved"
-_SAVE_REJECTED = "rejected"   # score did not make the top 10
-_SAVE_FAILED   = "failed"     # database unavailable / error
+_SAVE_SKIPPED   = "skipped"   # warmup: never recorded, by design
+_SAVE_SAVED     = "saved"
+_SAVE_REJECTED  = "rejected"  # score did not make the top 10
+_SAVE_FAILED    = "failed"    # database unavailable / error
 
 
 class GameOverScreen:
@@ -73,6 +76,9 @@ class GameOverScreen:
         self._stage = Stage(self._ui, star_count=160, horizon_fraction=0.55, scroll=22.0)
 
     def _save_score(self) -> str:
+        if self._stats.get("mode") == MODE_WARMUP:
+            # Warmup is a practice run and is never recorded anywhere.
+            return _SAVE_SKIPPED
         if self._leaderboard is None:
             return _SAVE_FAILED
         try:
@@ -94,6 +100,8 @@ class GameOverScreen:
 
     def _fetch_rank(self) -> int | None:
         """Return the leaderboard rank of this run's score, or None if unavailable."""
+        if self._stats.get("mode") == MODE_WARMUP:
+            return None
         if self._leaderboard is None:
             return None
         try:
@@ -119,6 +127,7 @@ class GameOverScreen:
     def run(self, clock: pygame.time.Clock):
         from screens.game_screen import GameScreen
         from screens.main_menu import MainMenuScreen
+        from screens.name_input_screen import NameInputScreen
 
         while True:
             dt = clock.tick(TARGET_FPS) / 1000.0
@@ -139,15 +148,31 @@ class GameOverScreen:
                             self._leaderboard,
                         )
                     if event.key == pygame.K_r:
+                        mode = str(self._stats.get("mode", "campaign"))
+                        difficulty = str(
+                            self._stats.get("start_difficulty", DIFFICULTY_EASY)
+                        )
+                        if mode == MODE_COMPETITION:
+                            # Competition is hot-seat: the next run belongs to
+                            # someone else, so ask for their name first.
+                            return NameInputScreen(
+                                self._screen,
+                                self._settings,
+                                self._assets,
+                                self._audio,
+                                self._leaderboard,
+                                mode,
+                                difficulty=difficulty,
+                            )
                         return GameScreen(
                             self._screen,
                             self._settings,
                             self._assets,
                             self._audio,
                             self._leaderboard,
-                            str(self._stats.get("mode", "campaign")),
+                            mode,
                             str(self._stats.get("player_name", "PLAYER")),
-                            str(self._stats.get("start_difficulty", DIFFICULTY_EASY)),
+                            difficulty,
                         )
             self._draw()
             pygame.display.flip()
@@ -179,7 +204,9 @@ class GameOverScreen:
             accent=accent, glow=0.35 + 0.25 * pulse(self._tick, 1.8),
         )
 
-        title = "ALL WAVES CLEARED" if self._victory else "GAME OVER"
+        title = "WARM-UP COMPLETE" if self._stats.get("mode") == MODE_WARMUP else (
+            "ALL WAVES CLEARED" if self._victory else "GAME OVER"
+        )
         ui.text(
             self._screen, title, 40, accent, panel.centerx, panel.y + ui.px(26),
             bold=True, anchor="midtop", glow=accent,
@@ -281,6 +308,7 @@ class GameOverScreen:
         ui = self._ui
         text, colour = {
             _SAVE_SAVED:    ("SCORE SAVED LOCALLY", NEON_GREEN),
+            _SAVE_SKIPPED:  ("PRACTICE RUN — NOT SCORED", NEON_CYAN),
             _SAVE_REJECTED: ("NOT IN TOP 10 — SCORE NOT SAVED", NEON_ORANGE),
         }.get(self._save_status, ("SCORE SAVE UNAVAILABLE", NEON_RED))
         y = panel.bottom - ui.px(58)
@@ -294,8 +322,13 @@ class GameOverScreen:
 
     def _draw_footer_hint(self) -> None:
         ui = self._ui
+        replay = (
+            "NEXT PLAYER"
+            if str(self._stats.get("mode", "")) == MODE_COMPETITION
+            else "PLAY AGAIN"
+        )
         ui.chips(
             self._screen,
-            [("R", "PLAY AGAIN"), ("M / ESC", "MAIN MENU")],
+            [("R", replay), ("M / ESC", "MAIN MENU")],
             self._ui.height - ui.px(30),
         )

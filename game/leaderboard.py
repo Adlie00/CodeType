@@ -87,12 +87,29 @@ class Leaderboard:
         )
         self._conn.commit()
 
-    def get_top(self, limit: int = TOP_LIMIT, sort_by: str = "score") -> list[dict]:
+    def get_top(
+        self,
+        limit: int = TOP_LIMIT,
+        sort_by: str = "score",
+        mode: str | None = None,
+    ) -> list[dict]:
+        """The highest-scoring rows, optionally restricted to one mode.
+
+        ``mode=None`` returns the board-wide top; passing a mode narrows the
+        query so competition can look up the number it has to beat without the
+        campaign and endless rows getting in the way.
+        """
         allowed = {"score", "wpm", "accuracy"}
         col = sort_by if sort_by in allowed else "score"
-        cur = self._conn.execute(
-            f"SELECT * FROM scores ORDER BY {col} DESC LIMIT ?", (limit,)
-        )
+        if mode is None:
+            cur = self._conn.execute(
+                f"SELECT * FROM scores ORDER BY {col} DESC LIMIT ?", (limit,)
+            )
+        else:
+            cur = self._conn.execute(
+                f"SELECT * FROM scores WHERE mode = ? ORDER BY {col} DESC LIMIT ?",
+                (mode, limit),
+            )
         cols = [d[0] for d in cur.description]
         return [dict(zip(cols, row)) for row in cur.fetchall()]
 

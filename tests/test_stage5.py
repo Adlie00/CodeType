@@ -1250,6 +1250,405 @@ class QueuePacingTests(unittest.TestCase):
         )
 
 
+class CompetitionTargetTests(unittest.TestCase):
+    """Competition mode resolves the score it has to beat, defensively."""
+
+    class FakeAssets:
+        def font(self, size, bold=False):
+            return pygame.font.Font(None, max(8, size))
+
+    class FakeAudio:
+        def play(self, slot):
+            pass
+
+        def update_volumes(self):
+            pass
+
+    class FakeSettings:
+        typing_effects = True
+        screen_shake = False
+
+    def _game(self, mode, leaderboard, player_name="ACE"):
+        from game.game import Game
+
+        screen = pygame.display.set_mode((1920, 1080))
+        return Game(
+            screen=screen, settings=self.FakeSettings(), assets=self.FakeAssets(),
+            audio=self.FakeAudio(), mode=mode, player_name=player_name,
+            leaderboard=leaderboard,
+        )
+
+    class ModeAwareBoard:
+        """A leaderboard whose get_top accepts the mode keyword."""
+
+        def __init__(self, rows):
+            self._rows = rows
+            self.calls = []
+
+        def get_top(self, limit=10, sort_by="score", mode=None):
+            self.calls.append((limit, sort_by, mode))
+            rows = [r for r in self._rows if mode is None or r["mode"] == mode]
+            return rows[:limit]
+
+    class LegacyBoard:
+        """A pre-mode leaderboard; get_top only understands limit and sort_by."""
+
+        def __init__(self, rows):
+            self._rows = rows
+
+        def get_top(self, limit=10, sort_by="score"):
+            return self._rows[:limit]
+
+    def test_competition_reads_the_top_competition_rival(self) -> None:
+        board = self.ModeAwareBoard([
+            {"player_name": "CAM", "score": 999999, "mode": "campaign"},
+            {"player_name": "RIVAL", "score": 120000, "mode": "competition"},
+            {"player_name": "ME", "score": 90000, "mode": "competition"},
+        ])
+        game = self._game("competition", board)
+        self.assertEqual(game._rival_name, "RIVAL")
+        self.assertEqual(game._rival_score, 120000)
+        self.assertEqual(board.calls, [(10, "score", "competition")])
+
+    def test_the_current_player_is_excluded_from_the_target(self) -> None:
+        # The player's own earlier run tops the competition board; the target
+        # must fall through to the best score belonging to someone else.
+        board = self.ModeAwareBoard([
+            {"player_name": "ACE", "score": 250000, "mode": "competition"},
+            {"player_name": "RIVAL", "score": 120000, "mode": "competition"},
+        ])
+        game = self._game("competition", board, player_name="ACE")
+        self.assertEqual(game._rival_name, "RIVAL")
+        self.assertEqual(game._rival_score, 120000)
+
+    def test_self_only_board_leaves_no_rival(self) -> None:
+        board = self.ModeAwareBoard([
+            {"player_name": "ace", "score": 250000, "mode": "competition"},
+        ])
+        game = self._game("competition", board, player_name="ACE")
+        self.assertIsNone(game._rival_name)
+        self.assertIsNone(game._rival_score)
+
+    def test_a_legacy_board_is_filtered_in_python(self) -> None:
+        board = self.LegacyBoard([
+            {"player_name": "CAM", "score": 999999, "mode": "campaign"},
+            {"player_name": "RIVAL", "score": 120000, "mode": "competition"},
+        ])
+        game = self._game("competition", board)
+        self.assertEqual(game._rival_name, "RIVAL")
+        self.assertEqual(game._rival_score, 120000)
+
+    def test_other_modes_never_query_the_board(self) -> None:
+        board = self.ModeAwareBoard([
+            {"player_name": "RIVAL", "score": 120000, "mode": "competition"},
+        ])
+        for mode in ("campaign", "endless"):
+            game = self._game(mode, board)
+            self.assertIsNone(game._rival_name)
+            self.assertIsNone(game._rival_score)
+        self.assertEqual(board.calls, [], "the board was queried outside competition")
+
+    def test_an_empty_or_absent_board_yields_no_target(self) -> None:
+        empty = self.ModeAwareBoard([])
+        on_none = self._game("competition", None)
+        self.assertIsNone(on_none._rival_name)
+        self.assertIsNone(on_none._rival_score)
+        game = self._game("competition", empty)
+        self.assertIsNone(game._rival_name)
+        self.assertIsNone(game._rival_score)
+
+
+class CompetitionHotSeatTests(unittest.TestCase):
+    """Competition's game-over "R" hands the next run to a fresh player."""
+
+    class FakeAssets:
+        def font(self, size, bold=False):
+            return pygame.font.Font(None, max(8, size))
+
+    class FakeAudio:
+        def play(self, slot):
+            pass
+
+        def update_volumes(self):
+            pass
+
+    class FakeSettings:
+        width = 1280
+        height = 720
+        fullscreen = False
+        master_volume = 0.8
+        music_volume = 0.5
+        sfx_volume = 0.8
+        typing_effects = True
+        screen_shake = False
+
+        def save(self):
+            pass
+
+    class Clock:
+        def tick(self, fps):
+            return 16
+
+    def _press_r_on_game_over(self, mode: str):
+        from screens.game_over_screen import GameOverScreen
+
+        screen = pygame.display.set_mode((1280, 720))
+        stats = {
+            "player_name": "ACE", "mode": mode, "score": 1234, "wpm": 42.5,
+            "accuracy": 97.5, "max_combo": 12, "best_wpm": 61.0, "waves": 3,
+            "enemies": 7, "bosses": 1, "victory": False,
+            "start_difficulty": "medium",
+        }
+        view = GameOverScreen(
+            screen, self.FakeSettings(), self.FakeAssets(), self.FakeAudio(),
+            None, stats,
+        )
+        pygame.event.clear()
+        pygame.event.post(
+            pygame.event.Event(pygame.KEYDOWN, key=pygame.K_r, unicode="r")
+        )
+        return view.run(self.Clock())
+
+    def test_competition_play_again_asks_for_the_next_player_name(self) -> None:
+        from screens.name_input_screen import NameInputScreen
+
+        result = self._press_r_on_game_over("competition")
+        self.assertIsInstance(result, NameInputScreen)
+        self.assertEqual(result._mode, "competition")
+
+    def test_other_modes_play_again_reuses_the_same_player(self) -> None:
+        from screens.game_screen import GameScreen
+
+        result = self._press_r_on_game_over("campaign")
+        self.assertIsInstance(result, GameScreen)
+        self.assertEqual(result._player_name, "ACE")
+
+
+class EndlessNoLivesTests(unittest.TestCase):
+    """Endless is endless: escapes never cost a life and never end the run."""
+
+    class FakeAssets:
+        def font(self, size, bold=False):
+            return pygame.font.Font(None, max(8, size))
+
+    class FakeAudio:
+        def play(self, slot):
+            pass
+
+        def update_volumes(self):
+            pass
+
+    class FakeSettings:
+        typing_effects = True
+        screen_shake = False
+
+    class RecordingBoard:
+        def __init__(self):
+            self.saved = []
+
+        def save_score(self, **kwargs):
+            self.saved.append(kwargs)
+            return True
+
+    def _game(self, mode):
+        from game.game import Game
+
+        screen = pygame.display.set_mode((1280, 720))
+        return Game(
+            screen=screen, settings=self.FakeSettings(), assets=self.FakeAssets(),
+            audio=self.FakeAudio(), mode=mode, player_name="ACE",
+        )
+
+    @staticmethod
+    def _escaped():
+        import types
+
+        return types.SimpleNamespace(x=10.0, width=20.0, y=100.0)
+
+    def test_endless_omits_the_lives_tile(self) -> None:
+        endless = [v[0] for v in self._game("endless")._hud_vitals()]
+        self.assertEqual(endless, ["WPM", "ACCURACY"])
+        campaign = [v[0] for v in self._game("campaign")._hud_vitals()]
+        self.assertIn("LIVES", campaign)
+
+    def test_endless_escapes_never_cost_a_life_or_end_the_run(self) -> None:
+        game = self._game("endless")
+        starting = game._state.player.lives
+        for _ in range(starting + 5):
+            game._on_enemy_escaped(self._escaped())
+        self.assertEqual(game._state.player.lives, starting)
+        self.assertFalse(game.finished, "an endless run must never end on its own")
+
+    def test_campaign_escapes_still_end_the_run(self) -> None:
+        game = self._game("campaign")
+        for _ in range(game._state.player.lives):
+            game._on_enemy_escaped(self._escaped())
+        self.assertTrue(game.finished)
+
+    def test_quitting_endless_banks_the_score(self) -> None:
+        from screens.game_screen import GameScreen
+
+        screen = pygame.display.set_mode((1280, 720))
+        board = self.RecordingBoard()
+        view = GameScreen(
+            screen, self.FakeSettings(), self.FakeAssets(), self.FakeAudio(),
+            board, "endless", "ACE",
+        )
+        view._save_run()
+        self.assertEqual(len(board.saved), 1)
+        self.assertEqual(board.saved[0]["mode"], "endless")
+        self.assertEqual(board.saved[0]["player_name"], "ACE")
+
+
+class WarmupModeTests(unittest.TestCase):
+    """Warmup is a 30s, unscored practice run that drops into competition."""
+
+    class FakeAssets:
+        def font(self, size, bold=False):
+            return pygame.font.Font(None, max(8, size))
+
+    class FakeAudio:
+        def play(self, slot):
+            pass
+
+        def update_volumes(self):
+            pass
+
+    class FakeSettings:
+        width = 1280
+        height = 720
+        fullscreen = False
+        master_volume = 0.8
+        music_volume = 0.5
+        sfx_volume = 0.8
+        typing_effects = True
+        screen_shake = False
+
+        def save(self):
+            pass
+
+    class Clock:
+        def tick(self, fps):
+            return 16
+
+    class RecordingBoard:
+        def __init__(self):
+            self.saved = []
+
+        def save_score(self, **kwargs):
+            self.saved.append(kwargs)
+            return True
+
+    def _game(self, mode, name="ACE"):
+        from game.game import Game
+
+        screen = pygame.display.set_mode((1280, 720))
+        return Game(
+            screen=screen, settings=self.FakeSettings(), assets=self.FakeAssets(),
+            audio=self.FakeAudio(), mode=mode, player_name=name,
+        )
+
+    @staticmethod
+    def _escaped():
+        import types
+
+        return types.SimpleNamespace(x=10.0, width=20.0, y=100.0)
+
+    def test_warmup_omits_lives_and_shows_the_clock(self) -> None:
+        labels = [v[0] for v in self._game("warmup")._hud_vitals()]
+        self.assertIn("TIME", labels)
+        self.assertNotIn("LIVES", labels)
+
+    def test_warmup_escapes_never_cost_a_life_or_end_the_run(self) -> None:
+        game = self._game("warmup")
+        starting = game._state.player.lives
+        for _ in range(starting + 5):
+            game._on_enemy_escaped(self._escaped())
+        self.assertEqual(game._state.player.lives, starting)
+        self.assertFalse(game.finished, "a warmup run must never end on a miss")
+
+    def test_the_clock_running_out_finishes_the_run(self) -> None:
+        game = self._game("warmup")
+        self.assertFalse(game.finished)
+        game._warmup_remaining = 0.05
+        game.update(0.1)
+        self.assertTrue(game.finished)
+        self.assertTrue(game._victory)
+
+    def test_warmup_spawns_without_waves_like_endless(self) -> None:
+        game = self._game("warmup")
+        self.assertFalse(game._wave_manager.is_campaign)
+        self.assertIn("WARMUP", game._wave_manager.language_name.upper())
+
+    def test_the_clock_running_out_goes_to_the_summary(self) -> None:
+        from screens.game_over_screen import GameOverScreen
+        from screens.game_screen import GameScreen
+
+        screen = pygame.display.set_mode((1280, 720))
+        view = GameScreen(
+            screen, self.FakeSettings(), self.FakeAssets(), self.FakeAudio(),
+            None, "warmup", "ACE", "medium",
+        )
+        pygame.event.clear()
+        view._game._finished = True
+        result = view.run(self.Clock())
+        self.assertIsInstance(result, GameOverScreen)
+        self.assertEqual(result._stats.get("mode"), "warmup")
+
+    def test_quitting_warmup_banks_no_score(self) -> None:
+        from screens.game_screen import GameScreen
+        from screens.main_menu import MainMenuScreen
+
+        screen = pygame.display.set_mode((1280, 720))
+        board = self.RecordingBoard()
+        view = GameScreen(
+            screen, self.FakeSettings(), self.FakeAssets(), self.FakeAudio(),
+            board, "warmup", "ACE",
+        )
+        pygame.event.clear()
+        view._game._return_to_menu = True
+        result = view.run(self.Clock())
+        self.assertIsInstance(result, MainMenuScreen)
+        self.assertEqual(board.saved, [], "warmup must not be recorded")
+
+    def test_the_menu_offers_warmup_and_starts_it_directly(self) -> None:
+        from game.constants import MODE_WARMUP
+        from screens.game_screen import GameScreen
+        from screens.main_menu import MainMenuScreen, _MENU_ITEMS
+
+        labels = [item[0] for item in _MENU_ITEMS]
+        self.assertIn("WARMUP", labels)
+
+        screen = pygame.display.set_mode((1280, 720))
+        menu = MainMenuScreen(
+            screen, self.FakeSettings(), self.FakeAssets(), self.FakeAudio(),
+            None,
+        )
+        result = menu._activate(MODE_WARMUP)
+        self.assertIsInstance(result, GameScreen)
+        self.assertEqual(result._mode, "warmup")
+        self.assertEqual(result._player_name, "PLAYER")
+
+    def test_the_warmup_summary_is_never_saved(self) -> None:
+        from screens.game_over_screen import GameOverScreen
+
+        screen = pygame.display.set_mode((1280, 720))
+        board = self.RecordingBoard()
+        stats = {
+            "player_name": "PLAYER", "mode": "warmup", "score": 1234, "wpm": 42.5,
+            "accuracy": 97.5, "max_combo": 12, "best_wpm": 61.0, "waves": 3,
+            "enemies": 7, "bosses": 1, "victory": True,
+            "start_difficulty": "medium",
+        }
+        view = GameOverScreen(
+            screen, self.FakeSettings(), self.FakeAssets(), self.FakeAudio(),
+            board, stats,
+        )
+        self.assertEqual(board.saved, [], "a warmup run must never be recorded")
+        self.assertEqual(view._save_status, "skipped")
+        self.assertIsNone(view._rank)
+
+
 class ScreenStateTests(unittest.TestCase):
     """State that must survive a rebuild, because a resize triggers one."""
 

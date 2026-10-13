@@ -884,11 +884,13 @@ class Backdrop:
         grid: bool = True,
         scroll: float = 26.0,
         colours: bool = True,
+        horizon_rule: bool = True,
     ) -> None:
         self.scroll = scroll
         self.colours = colours
         self.star_count = star_count
         self.horizon_fraction = horizon_fraction
+        self.horizon_rule = horizon_rule
         self._grid_surface: pygame.Surface | None = None
         self._grid_key: tuple | None = None
         self._stars: list[Star] = []
@@ -917,7 +919,7 @@ class Backdrop:
             surface.blit(grid, (0, 0))
 
     def _grid(self) -> pygame.Surface | None:
-        key = (self.width, self.height, self.horizon_fraction)
+        key = (self.width, self.height, self.horizon_fraction, self.horizon_rule)
         if self._grid_key == key:
             return self._grid_surface
         self._grid_key = key
@@ -949,8 +951,13 @@ class Backdrop:
             pygame.draw.line(surface, (0, int(alpha * 0.32), int(alpha * 0.78)),
                              (0, y), (self.width, y), 1)
 
-        # A bright rule at the horizon anchors the perspective.
-        pygame.draw.line(surface, (0, 120, 170), (0, horizon), (self.width, horizon), 1)
+        # A bright rule at the horizon anchors the perspective. It is optional
+        # because it reads as a lone centred line when the grid sits behind a
+        # panel, which some screens would rather do without.
+        if self.horizon_rule:
+            pygame.draw.line(
+                surface, (0, 120, 170), (0, horizon), (self.width, horizon), 1
+            )
         self._grid_surface = surface
         return surface
 
@@ -963,7 +970,7 @@ class Stage:
     and the expensive grid layer is only rebuilt when the size actually moves.
     """
 
-    __slots__ = ("_ui", "_backdrop", "_key", "horizon_fraction", "scroll")
+    __slots__ = ("_ui", "_backdrop", "_key", "horizon_fraction", "horizon_rule", "scroll")
 
     def __init__(
         self,
@@ -973,9 +980,11 @@ class Stage:
         horizon_fraction: float = 0.58,
         grid: bool = True,
         scroll: float = 26.0,
+        horizon_rule: bool = True,
     ) -> None:
         self._ui = ui
         self.horizon_fraction = horizon_fraction
+        self.horizon_rule = horizon_rule
         self.scroll = scroll
         self._key: tuple[int, int] | None = None
         self._backdrop = Backdrop(
@@ -985,6 +994,7 @@ class Stage:
             horizon_fraction=horizon_fraction,
             grid=grid,
             scroll=scroll,
+            horizon_rule=horizon_rule,
         )
 
     def update(self, dt: float) -> None:

@@ -127,8 +127,16 @@ class GameState:
                 return milestone
         return 0
 
-    def record_missed_enemy(self) -> bool:
+    def record_missed_enemy(self, costs_life: bool = True) -> bool:
+        """A miss always breaks the combo; only some modes charge a life.
+
+        Endless has no lives, so it calls this with ``costs_life=False``: the
+        combo still resets, but the player can never be killed by a miss.
+        Returns True when that miss ended the run.
+        """
         self.combo = 0
+        if not costs_life:
+            return False
         return self.player.take_damage()
 
     def set_wave(self, wave_number: int, difficulty: str) -> None:

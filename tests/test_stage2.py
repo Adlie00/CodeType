@@ -538,7 +538,7 @@ class ShellScreenTests(unittest.TestCase):
             self.leaderboard,
         )
         pygame.event.clear()
-        for _ in range(5):
+        for _ in range(6):
             pygame.event.post(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_DOWN, unicode=""))
         pygame.event.post(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_RETURN, unicode="\r"))
 

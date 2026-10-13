@@ -15,6 +15,7 @@ from game.constants import (
 )
 from game.audio_manager import SFX_MENU_SELECT
 from game.display import toggle_fullscreen
+from game.input_map import printable_character
 from game.ui import UI, Stage, pulse
 
 
@@ -102,10 +103,10 @@ class NameInputScreen:
         if event.key == pygame.K_BACKSPACE:
             self._name = self._name[:-1]
             return None
-        character = getattr(event, "unicode", "")
-        if isinstance(character, str) and len(character) == 1:
-            if ord(character) >= 32 and len(self._name) < self._max_length:
-                self._name += character
+        # Physical-key mapping so dead-key layouts behave like plain US here too.
+        character = printable_character(event)
+        if character is not None and len(self._name) < self._max_length:
+            self._name += character
         return None
 
     # ── Drawing ───────────────────────────────────────────────────────────────

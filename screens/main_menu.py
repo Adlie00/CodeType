@@ -19,6 +19,7 @@ from game.constants import (
     MODE_CAMPAIGN,
     MODE_COMPETITION,
     MODE_ENDLESS,
+    MODE_WARMUP,
     NEON_CYAN,
     NEON_GREEN,
     NEON_ORANGE,
@@ -40,6 +41,7 @@ _MENU_ITEMS = [
     ("CAMPAIGN",    MODE_CAMPAIGN,    "10 waves · clear them all"),
     ("ENDLESS",     MODE_ENDLESS,     "boss every 20 kills"),
     ("COMPETITION", MODE_COMPETITION, "scored on its own board"),
+    ("WARMUP",      MODE_WARMUP,      "30s practice · not scored"),
     ("LEADERBOARD", "leaderboard",    "local high scores"),
     ("SETTINGS",    "settings",       "resolution, audio, effects"),
     ("EXIT",        "exit",           "quit to desktop"),
@@ -51,6 +53,7 @@ _ITEM_COLOURS = (
     NEON_CYAN,
     NEON_GREEN,
     NEON_YELLOW,
+    NEON_ORANGE,
     NEON_CYAN,
     NEON_CYAN,
     (150, 150, 170),
@@ -96,7 +99,9 @@ class MainMenuScreen:
     def _rebuild(self, screen: pygame.Surface) -> None:
         width, height = screen.get_size()
         self._ui    = UI(self._assets, width, height)
-        self._stage = Stage(self._ui, star_count=200, horizon_fraction=0.62)
+        self._stage = Stage(
+            self._ui, star_count=200, horizon_fraction=0.62, horizon_rule=False
+        )
 
     def set_surface(self, screen: pygame.Surface) -> None:
         self._screen = screen
@@ -173,7 +178,7 @@ class MainMenuScreen:
                 self._screen, self._settings, self._assets,
                 self._audio, self._leaderboard,
             )
-        if action in (MODE_CAMPAIGN, MODE_ENDLESS, MODE_COMPETITION):
+        if action in (MODE_CAMPAIGN, MODE_ENDLESS, MODE_COMPETITION, MODE_WARMUP):
             difficulty = DIFFICULTY_ORDER[self._diff_index]
             if action == MODE_COMPETITION:
                 from screens.name_input_screen import NameInputScreen

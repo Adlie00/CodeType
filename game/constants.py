@@ -196,6 +196,10 @@ BOSS_PHASE_COLOURS = (NEON_RED, NEON_ORANGE, NEON_YELLOW)
 MODE_CAMPAIGN    = "campaign"
 MODE_ENDLESS     = "endless"
 MODE_COMPETITION = "competition"
+MODE_WARMUP      = "warmup"
+# Warmup is a timed, unscored practice session: no lives, and the clock is the
+# only thing that ends it. Runs are never recorded on the leaderboard.
+WARMUP_SECONDS   = 30.0
 
 # ── Scoring ───────────────────────────────────────────────────────────────────
 #   total = (base + wave + speed + accuracy) x difficulty x combo x boss

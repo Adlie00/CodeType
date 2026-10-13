@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import math
 import random
+import sqlite3
 
 import pygame
 
@@ -32,6 +33,9 @@ from game.constants import (
     ERROR_COLOUR,
     GREY,
     HAIRLINE_DIM,
+    MODE_COMPETITION,
+    MODE_ENDLESS,
+    MODE_WARMUP,
     NEON_CYAN,
     NEON_GREEN,
     NEON_ORANGE,
@@ -45,10 +49,12 @@ from game.constants import (
     TEXT_BRIGHT,
     TEXT_DIM,
     TYPED_COLOUR,
+    WARMUP_SECONDS,
 )
 from game.content import ContentRepository
 from game.effects import EffectsManager
 from game.game_state import GameState
+from game.input_map import printable_character
 from game.ui import UI, Layout, Stage, mix, pulse
 from game.wave_manager import WaveManager
 
@@ -80,18 +86,33 @@ class Game:
         player_name: str = "PLAYER",
         content: ContentRepository | None = None,
         difficulty: str | None = None,
+        leaderboard=None,
     ) -> None:
         self._screen = screen
         self._settings = settings
         self._assets = assets
         self._audio = audio
+        self._leaderboard = leaderboard
         self._content = content or ContentRepository()
         self._state = GameState(mode=mode, player_name=player_name)
+        # Competition plays against a fixed target: the best score already on
+        # that mode's board, by someone other than this player. Read once at run
+        # start so it never shifts mid-run, and never for the other modes.
+        self._rival_name: str | None = None
+        self._rival_score: int | None = None
+        if mode == MODE_COMPETITION:
+            rival = self._competition_rival()
+            if rival is not None:
+                self._rival_name, self._rival_score = rival
+
+        # Warmup is a timed practice session: no lives, and the clock is the
+        # only thing that can end it. At zero the screen drops into competition.
+        self._warmup_remaining = WARMUP_SECONDS if mode == MODE_WARMUP else 0.0
 
         width, height = screen.get_size()
         self._ui = UI(assets, width, height)
         self._layout = Layout(width, height)
-        self._stage = Stage(self._ui, star_count=170, horizon_fraction=0.55, scroll=34.0)
+        self._stage = Stage(self._ui, star_count=170, horizon_fraction=0.46, scroll=34.0)
 
         self._wave_manager = WaveManager(
             self._content, mode, layout=self._layout, difficulty=difficulty
@@ -105,7 +126,11 @@ class Game:
             screen_shake=bool(getattr(settings, "screen_shake", True)),
             scale=self._layout.scale,
         )
-        self._message = f"WAVE {self._wave_manager.wave_number}  //  {self._wave_manager.language_name}"
+        self._message = (
+            f"WARM UP  //  {int(WARMUP_SECONDS)}s"
+            if mode == MODE_WARMUP
+            else f"WAVE {self._wave_manager.wave_number}  //  {self._wave_manager.language_name}"
+        )
         self._message_timer = 2.5
         self._banner: str | None = None
         self._banner_timer = 0.0
@@ -185,6 +210,45 @@ class Game:
     def _boss_station(self) -> float:
         return self._layout.boss_station()
 
+    def _competition_rival(self) -> tuple[str, int] | None:
+        """Name and score of the top competition player who is not this one.
+
+        The target is the best competition run held by *someone else*, so a
+        player replaying never ends up chasing their own name. Every access is
+        defensive: the board may be absent (headless tests), a stub may predate
+        the ``mode`` argument, or the database may be locked. No qualifying row
+        is not an error — it just means the bar shows a dash.
+        """
+        board = self._leaderboard
+        if board is None or not hasattr(board, "get_top"):
+            return None
+        me = str(self._state.player_name).strip().upper()
+        try:
+            try:
+                # A batch, not a single row: the #1 may be this very player, so
+                # the first *other* name is what matters.
+                rows = board.get_top(10, "score", mode=MODE_COMPETITION)
+            except TypeError:
+                # Older / stub leaderboards only know the two-argument form;
+                # filter their board-wide result down to competition here.
+                rows = [
+                    row
+                    for row in board.get_top(10, "score")
+                    if str(row.get("mode", "")).lower() == MODE_COMPETITION
+                ]
+        except (OSError, sqlite3.Error, TypeError, ValueError):
+            return None
+        for row in rows:
+            name = str(row.get("player_name", "")).strip()
+            if name and name.upper() == me:
+                continue
+            try:
+                score = int(row.get("score", 0))
+            except (TypeError, ValueError, AttributeError):
+                continue
+            return (name, score)
+        return None
+
     # ── Update ────────────────────────────────────────────────────────────────
 
     def update(self, dt: float) -> None:
@@ -192,6 +256,11 @@ class Game:
             self._pause_blink = (self._pause_blink + dt) % 1.0
             return
         step = max(0.0, dt)
+        if self._state.mode == MODE_WARMUP:
+            self._warmup_remaining = max(0.0, self._warmup_remaining - step)
+            if self._warmup_remaining <= 0.0:
+                self._finish_warmup()
+                return
         self._message_timer = max(0.0, self._message_timer - step)
         self._banner_timer = max(0.0, self._banner_timer - step)
         if self._banner_timer <= 0.0:
@@ -276,7 +345,12 @@ class Game:
 
     def _on_enemy_escaped(self, enemy) -> None:
         centre_x, centre_y = enemy.x + enemy.width / 2, enemy.y
-        if self._state.record_missed_enemy():
+        # Neither endless nor warmup has lives: an escape breaks the combo and
+        # pings the field, but it can never end the run.
+        ended = self._state.record_missed_enemy(
+            costs_life=self._state.mode not in (MODE_ENDLESS, MODE_WARMUP)
+        )
+        if ended:
             self._effects.particles.explosion(centre_x, centre_y, (NEON_RED,), 26, (50.0, 160.0))
             self._effects.add_shake(_SHAKE_LIFE_LOST, 0.4)
             self._audio.play(SFX_TYPE_WRONG)
@@ -341,10 +415,9 @@ class Game:
             return "\t"
         if event.key == pygame.K_SPACE:
             return " "
-        character = getattr(event, "unicode", "")
-        if len(character) != 1 or ord(character) < 32:
-            return None
-        return character
+        # Physical-key mapping, so dead-key layouts (e.g. United States-
+        # International, where '"' needs two presses) behave like plain US.
+        return printable_character(event)
 
     def _handle_character(self, active, character: str) -> None:
         before = self._typing_totals(active)
@@ -419,6 +492,18 @@ class Game:
         self._message_timer = 999.0
         self._audio.play(SFX_WAVE_CLEAR if victory else SFX_GAME_OVER)
 
+    def _finish_warmup(self) -> None:
+        """The 30s clock ran out: the practice run is over.
+
+        Flagged as a victory so the summary reads as a clean completion, but
+        warmup is never recorded on the leaderboard.
+        """
+        self._finished = True
+        self._victory = True
+        self._message = "TIME UP"
+        self._message_timer = 999.0
+        self._audio.play(SFX_WAVE_CLEAR)
+
     # ── Rendering ────────────────────────────────────────────────────────────
 
     def set_surface(self, screen: pygame.Surface) -> None:
@@ -478,6 +563,7 @@ class Game:
             self._draw_enemy(surface, enemy)
         self._effects.draw_world(surface, self._ui.font(18, True))
         self._draw_hud(surface, width)
+        self._draw_competition_bar(surface, width)
         self._draw_message(surface, width, height)
         self._draw_banner(surface, width, height)
 
@@ -569,17 +655,75 @@ class Game:
         # Right: the numbers that tell you how well you are doing it.
         right_edge = width - pad
         right = pygame.Rect(int(width * 0.68), top, right_edge - int(width * 0.68), tile_height)
-        third = right.width // 3
-        vitals = (
-            ("WPM", f"{self._state.current_wpm:.0f}", TEXT_BRIGHT),
-            ("ACCURACY", f"{self._state.accuracy:.1f}%", TEXT_BRIGHT),
-            ("LIVES", "♥" * self._state.player.lives, NEON_PINK),
-        )
+        vitals = self._hud_vitals()
+        third = right.width // len(vitals)
+        last = len(vitals) - 1
         for index, (label, value, colour) in enumerate(vitals):
             block = pygame.Rect(right.x + index * third, right.y, third, tile_height)
             ui.tile(
                 surface, block, label, value, value_colour=colour, value_size=22,
-                align="right" if index == 2 else "left",
+                align="right" if index == last else "left",
+            )
+
+    def _hud_vitals(self) -> list[tuple[str, str, tuple[int, int, int]]]:
+        """The right-hand HUD tiles. Endless and warmup have no lives."""
+        vitals = [
+            ("WPM", f"{self._state.current_wpm:.0f}", TEXT_BRIGHT),
+            ("ACCURACY", f"{self._state.accuracy:.1f}%", TEXT_BRIGHT),
+        ]
+        if self._state.mode == MODE_WARMUP:
+            vitals.append(
+                ("TIME", f"{math.ceil(self._warmup_remaining)}s", NEON_YELLOW)
+            )
+        elif self._state.mode != MODE_ENDLESS:
+            vitals.append(("LIVES", "♥" * self._state.player.lives, NEON_PINK))
+        return vitals
+
+    def _competition_bar_rect(self, width: int) -> pygame.Rect | None:
+        """The strip under the HUD, or None outside competition mode."""
+        if self._state.mode != MODE_COMPETITION:
+            return None
+        return pygame.Rect(
+            0, self._layout.hud_height, width, self._ui.px(28)
+        )
+
+    def _draw_competition_bar(self, surface: pygame.Surface, width: int) -> None:
+        """Competition mode's scoreboard: who you are, and what to beat."""
+        bar = self._competition_bar_rect(width)
+        if bar is None:
+            return
+        ui = self._ui
+
+        body = pygame.Surface(bar.size, pygame.SRCALPHA)
+        body.fill((*PANEL_BG, 246))
+        surface.blit(body, bar.topleft)
+        # Yellow is competition's accent everywhere else, so it marks the bar.
+        pygame.draw.line(
+            surface, NEON_YELLOW, (0, bar.bottom - 1), (width, bar.bottom - 1), 1
+        )
+
+        pad = ui.px(22)
+        name = str(self._state.player_name)[:18] or "PLAYER"
+        ui.text(
+            surface, f"PLAYER   {name}", 13, NEON_YELLOW,
+            pad, bar.centery, bold=True, anchor="midleft",
+        )
+        if self._rival_score is not None and self._rival_name:
+            # "ALICE TO BEAT   98,450" — the name carries the challenge, the
+            # number is what is measured against.
+            score_rect = ui.text(
+                surface, f"{self._rival_score:,}", 13, TEXT_BRIGHT,
+                width - pad, bar.centery, bold=True, anchor="midright",
+            )
+            ui.text(
+                surface, f"{str(self._rival_name)[:16]} TO BEAT", 13, NEON_YELLOW,
+                score_rect.left - ui.px(10), bar.centery, bold=True,
+                anchor="midright",
+            )
+        else:
+            ui.text(
+                surface, "NO ONE TO BEAT", 13, TEXT_DIM,
+                width - pad, bar.centery, bold=True, anchor="midright",
             )
 
     def _wave_progress(self) -> float:
@@ -897,9 +1041,11 @@ class Game:
             return
         ui = self._ui
         alpha = min(1.0, self._message_timer / 1.2)
+        bar = self._competition_bar_rect(width)
+        top = self._layout.hud_height + (bar.height if bar is not None else 0)
         ui.text(
             surface, self._message, 22, mix(NEON_CYAN, DARK_BG, 1.0 - alpha),
-            width // 2, self._layout.hud_height + ui.px(16),
+            width // 2, top + ui.px(16),
             bold=True, anchor="midtop", glow=None,
         )
 
