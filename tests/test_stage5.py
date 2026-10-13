@@ -853,6 +853,140 @@ class ScreenDrawTests(unittest.TestCase):
                 )
 
 
+class LeaderboardFilterTests(unittest.TestCase):
+    """The mode filter is a real dropdown: it opens, navigates, clicks, and the
+    selection it commits has to actually narrow the rows the screen reads."""
+
+    class FakeAssets:
+        def font(self, size, bold=False):
+            return pygame.font.Font(None, max(8, size))
+
+    class FakeAudio:
+        def play(self, slot):
+            pass
+
+        def update_volumes(self):
+            pass
+
+    class FakeSettings:
+        fullscreen = False
+        master_volume = 0.8
+        music_volume = 0.5
+        sfx_volume = 0.8
+        typing_effects = True
+        screen_shake = True
+
+        def __init__(self, width=1280, height=720):
+            self.width, self.height = width, height
+
+        def save(self):
+            pass
+
+    class ModeAwareBoard:
+        """A leaderboard whose get_top accepts the mode keyword."""
+
+        def __init__(self, rows):
+            self.rows = rows
+            self.calls = []
+
+        def get_top(self, limit=10, sort_by="score", mode=None):
+            self.calls.append((limit, sort_by, mode))
+            rows = [r for r in self.rows if mode is None or r["mode"] == mode]
+            return sorted(rows, key=lambda r: r["score"], reverse=True)[:limit]
+
+    class LegacyBoard:
+        """A pre-mode backend; get_top only understands limit and sort_by."""
+
+        def __init__(self, rows):
+            self.rows = rows
+
+        def get_top(self, limit=10, sort_by="score"):
+            return self.rows[:limit]
+
+    ROWS = (
+        {"player_name": "ACE", "score": 900, "wpm": 90.0,
+         "accuracy": 99.0, "mode": "campaign"},
+        {"player_name": "BOT", "score": 800, "wpm": 80.0,
+         "accuracy": 98.0, "mode": "endless"},
+        {"player_name": "CAT", "score": 700, "wpm": 70.0,
+         "accuracy": 97.0, "mode": "competition"},
+    )
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        pygame.init()
+
+    def _view(self, board=None):
+        from screens.leaderboard_screen import LeaderboardScreen
+
+        if board is None:
+            board = self.ModeAwareBoard([dict(r) for r in self.ROWS])
+        screen = pygame.display.set_mode((1280, 720))
+        return LeaderboardScreen(
+            screen, self.FakeSettings(), self.FakeAssets(), self.FakeAudio(), board
+        )
+
+    def test_clicking_the_control_opens_it_and_an_option_filters(self) -> None:
+        board = self.ModeAwareBoard([dict(r) for r in self.ROWS])
+        view = self._view(board)
+        self.assertEqual(len(view._rows), 3, "the board starts unfiltered")
+
+        self.assertTrue(view._handle_click(view._filter_rect().center))
+        self.assertTrue(view._filter_open, "clicking the control opens the menu")
+
+        # Option 2 is ENDLESS (index matches _FILTER_OPTIONS).
+        view._handle_click(view._filter_option_rects()[2].center)
+        self.assertFalse(view._filter_open, "choosing an option closes the menu")
+        self.assertEqual(view._filter_index, 2)
+        self.assertEqual([r["mode"] for r in view._rows], ["endless"])
+
+    def test_keyboard_opens_navigates_and_commits(self) -> None:
+        view = self._view()
+        view._open_filter()
+        self.assertTrue(view._filter_open)
+        self.assertEqual(view._filter_hover, view._filter_index)
+
+        view._move_filter(1)
+        view._move_filter(1)
+        self.assertEqual(view._filter_hover, 2)
+        view._commit_filter(view._filter_hover)
+
+        self.assertFalse(view._filter_open)
+        self.assertEqual(view._filter_index, 2)
+        self.assertEqual([r["mode"] for r in view._rows], ["endless"])
+
+    def test_a_click_away_dismisses_the_menu_without_changing_the_mode(self) -> None:
+        view = self._view()
+        view._open_filter()
+        view._handle_click((5, 5))
+        self.assertFalse(view._filter_open)
+        self.assertEqual(view._filter_index, 0, "click-away must not pick a mode")
+
+    def test_a_legacy_board_is_filtered_in_python(self) -> None:
+        board = self.LegacyBoard([dict(r) for r in self.ROWS])
+        view = self._view(board)
+        self.assertEqual(len(view._rows), 3)
+        view._commit_filter(2)  # ENDLESS
+        self.assertEqual([r["mode"] for r in view._rows], ["endless"])
+
+    def test_escape_closes_the_menu_before_leaving_the_screen(self) -> None:
+        view = self._view()
+        view._open_filter()
+        pygame.event.clear()
+        pygame.event.post(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_ESCAPE))
+        pygame.event.post(pygame.event.Event(pygame.QUIT))
+        result = view.run(pygame.time.Clock())
+        self.assertIsNone(
+            result, "Escape should close the menu, not return to the main menu"
+        )
+        self.assertFalse(view._filter_open)
+
+    def test_the_open_menu_draws(self) -> None:
+        view = self._view()
+        view._open_filter()
+        view._draw()  # must not raise with the option list showing
+
+
 class FullscreenHotkeyTests(unittest.TestCase):
     """F11 has to reach every screen, and must not cost you your window size.
 

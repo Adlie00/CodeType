@@ -116,9 +116,9 @@ ENEMY_FOOTER_HEIGHT   = 20
 ENEMY_SWAY_SPECIAL    = 46
 ENEMY_SWAY_FAST       = 5
 BOSS_INTRO_SECONDS    = 2.2
-# Boss snippets run 400-900 characters, so a falling boss could never be typed
-# before it crossed the screen. The boss descends to a station inside the play
-# field and holds there; the wave cannot end until it is destroyed.
+# A boss card is the longest in the game, so a falling boss could never be
+# typed before it crossed the screen. The boss descends to a station inside the
+# play field and holds there; the wave cannot end until it is destroyed.
 BOSS_STATION_FRACTION = 0.26
 BOSS_SWAY             = 6
 BOSS_WIDTH_BONUS      = 70
@@ -166,12 +166,14 @@ ENEMY_COLOURS = {
 
 # Base fall speed in pixels per second before the difficulty multiplier. Tuned
 # against the design travel, so these are really "seconds to the warning line".
+# Bumped ~10% across the board to tighten the pace; long snippets still fall
+# under the fairness cap in Enemy.limit_speed_for, so only short enemies sped up.
 ENEMY_BASE_SPEEDS = {
-    ENEMY_NORMAL:  38.0,
-    ENEMY_FAST:    62.0,
-    ENEMY_TANK:    25.0,
-    ENEMY_SPECIAL: 47.0,
-    ENEMY_BOSS:    16.0,
+    ENEMY_NORMAL:  42.0,
+    ENEMY_FAST:    68.0,
+    ENEMY_TANK:    27.5,
+    ENEMY_SPECIAL: 52.0,
+    ENEMY_BOSS:    18.0,
 }
 
 # Challenge length preference per enemy type: how many picks are taken from the

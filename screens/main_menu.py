@@ -14,7 +14,6 @@ from game.constants import (
     DIFFICULTY_HARD,
     DIFFICULTY_EXPERT,
     DIFFICULTY_ORDER,
-    HAIRLINE,
     HAIRLINE_DIM,
     MODE_CAMPAIGN,
     MODE_COMPETITION,
@@ -67,10 +66,6 @@ _DIFF_COLOURS = {
     DIFFICULTY_EXPERT: NEON_RED,
 }
 
-# What fraction of the row's inner width is reserved for the label column.
-# The rest (right of this split) is the blurb column.
-_LABEL_SPLIT = 0.52
-
 
 class MainMenuScreen:
     def __init__(
@@ -91,6 +86,7 @@ class MainMenuScreen:
         self._tick       = 0.0
         self._diff_index = DIFFICULTY_ORDER.index(DIFFICULTY_MEDIUM)
         self._warmth     = [0.0] * len(_MENU_ITEMS)
+        self._title_bottom = 0   # measured when the title block is drawn
 
         self._rebuild(screen)
 
@@ -235,11 +231,15 @@ class MainMenuScreen:
         ui.divider(self._screen, cx - half, cx + half, rule_y, HAIRLINE_DIM)
         core   = max(ui.px(40), int(half * 0.28))
         ui.divider(self._screen, cx - core, cx + core, rule_y, NEON_CYAN, 240)
-        ui.text(
+        caption = ui.text(
             self._screen,
             "PROGRAMMING TYPING GAME",
-            14, TEXT_DIM, cx, rule_y + ui.px(14), anchor="midtop",
+            15, TEXT_BRIGHT, cx, rule_y + ui.px(14),
+            anchor="midtop", glow=NEON_CYAN,
         )
+        # Remember where the title block ends so the menu panel can stay below
+        # it (the block's height depends on the real font).
+        self._title_bottom = caption.bottom
 
     # ── Difficulty strip ──────────────────────────────────────────────────────
 
@@ -299,7 +299,6 @@ class MainMenuScreen:
 
         # ── Geometry constants (design space → px) ────────────────────────────
         pad        = ui.px(18)         # uniform left / right inset inside panel
-        item_h     = ui.px(50)         # row height
         gap        = ui.px(4)          # gap between rows
         arrow_w    = ui.px(32)         # reserved width for ">>" arrow column
         strip_h    = ui.px(30)         # difficulty button height
@@ -307,24 +306,38 @@ class MainMenuScreen:
         strip_gap  = ui.px(12)         # space between strip and first row
         note_h     = ui.px(38)         # bottom note block height
 
-        rows_h    = len(_MENU_ITEMS) * item_h + (len(_MENU_ITEMS) - 1) * gap
-        panel_h   = section_h + strip_h + strip_gap + rows_h + note_h + ui.px(14)
+        count     = len(_MENU_ITEMS)
+        fixed_h   = section_h + strip_h + strip_gap + note_h + ui.px(14)
         panel_w   = min(ui.width - ui.px(56), ui.px(620))
 
-        # Vertical placement: below the title, above the footer chips.
+        # Vertical placement: below the title, above the footer chips. The title
+        # block's height depends on the real font, so it is measured as it is
+        # drawn; reserve room for it and shorten the rows if the panel would
+        # otherwise ride up and cover the caption.
+        top_floor    = self._title_bottom + ui.px(16)
+        bottom_limit = ui.height - ui.px(56)
+
+        item_h    = ui.px(50)
+        available = bottom_limit - top_floor
+        if fixed_h + count * item_h + (count - 1) * gap > available:
+            free   = available - fixed_h - (count - 1) * gap
+            item_h = max(ui.px(34), free // count)
+
+        rows_h  = count * item_h + (count - 1) * gap
+        panel_h = fixed_h + rows_h
+
         panel_top = min(
             max(ui.px(108), int(ui.height * 0.29)),
-            ui.height - panel_h - ui.px(56),
+            bottom_limit - panel_h,
         )
+        panel_top = max(panel_top, top_floor)
         panel = pygame.Rect(cx - panel_w // 2, panel_top, panel_w, panel_h)
-
-        selected_colour = _ITEM_COLOURS[self._selected]
 
         # Panel background
         ui.panel(
             self._screen, panel,
             fill=PANEL_BG, alpha=228, border=HAIRLINE_DIM,
-            accent=selected_colour, glow=0.35 + 0.25 * pulse(self._tick, 1.6),
+            glow=0.35 + 0.25 * pulse(self._tick, 1.6),
         )
 
         # ── "SELECT MODE" caption ─────────────────────────────────────────────
@@ -347,11 +360,9 @@ class MainMenuScreen:
         # ── Mode rows ─────────────────────────────────────────────────────────
         rows_y = div_y + ui.px(4)
 
-        # The blurb column starts after the arrow + label column.
-        # Split at _LABEL_SPLIT of the inner width so blurb never overlaps label.
+        # The blurb is right-aligned inside each row, keeping it clear of the
+        # arrow + label column at the left.
         inner_w   = panel_w - pad * 2
-        label_col = int(inner_w * _LABEL_SPLIT)  # px the label+arrow occupies
-        blurb_x   = panel.x + pad + label_col    # left edge of blurb column
 
         for i, (label, _action, blurb) in enumerate(_MENU_ITEMS):
             row = pygame.Rect(

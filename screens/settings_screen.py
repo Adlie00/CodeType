@@ -321,33 +321,14 @@ class SettingsScreen:
                     self._screen, state_colour, knob,
                     border_radius=knob.height // 2,
                 )
-                # A pill that is either lit or hollow — the state is legible
-                # without reading the word.
-                track = pygame.Rect(
-                    value_x - width - ui.px(40), row.centery - ui.px(6),
-                    ui.px(22), ui.px(12),
-                )
-                pygame.draw.rect(
-                    self._screen,
-                    state_colour if on else HAIRLINE_DIM,
-                    track, 1, border_radius=track.height // 2,
-                )
-                knob = pygame.Rect(
-                    track.x + (track.width // 2 if on else 0),
-                    track.y + ui.px(2),
-                    track.width // 2 - ui.px(2),
-                    track.height - ui.px(4),
-                )
-                pygame.draw.rect(
-                    self._screen, state_colour, knob,
-                    border_radius=knob.height // 2,
-                )
 
         ui.text(
             self._screen, _LABELS[item], 18, colour, label_x, row.centery,
             bold=selected, anchor="midleft",
         )
-        if selected:
+        # A volume row draws its meter at this exact x and centre line, so the
+        # hint is skipped there rather than painted over the bar.
+        if selected and item not in _VOLUMES:
             ui.text(
                 self._screen, _HINTS[item], 11, TEXT_DIM,
                 label_x + ui.px(190), row.centery, anchor="midleft",

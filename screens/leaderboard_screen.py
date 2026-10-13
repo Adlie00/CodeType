@@ -11,7 +11,6 @@ from game.constants import (
     HAIRLINE_DIM,
     NEON_CYAN,
     NEON_GREEN,
-    NEON_ORANGE,
     NEON_RED,
     NEON_YELLOW,
     PANEL_BG,
@@ -61,6 +60,9 @@ class LeaderboardScreen:
         self._leaderboard = leaderboard
         self._sort_index = 0
         self._filter_index = 0        # index into _FILTER_OPTIONS; 0 = ALL
+        self._filter_open = False     # is the mode dropdown expanded?
+        self._filter_hover = 0        # option highlighted while the menu is open
+        self._filter_over_control = False
         # Track who last played so we can highlight their rows.
         self._last_player: str = str(
             getattr(leaderboard, "last_player_name", "") or ""
@@ -96,6 +98,13 @@ class LeaderboardScreen:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     return None
+                if event.type == pygame.MOUSEMOTION:
+                    self._handle_motion(event.pos)
+                    continue
+                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                    if not self._confirm_reset:
+                        self._handle_click(event.pos)
+                    continue
                 if event.type != pygame.KEYDOWN:
                     continue
                 if event.key == pygame.K_F11:
@@ -107,6 +116,22 @@ class LeaderboardScreen:
                     elif event.key in (pygame.K_n, pygame.K_ESCAPE):
                         self._confirm_reset = False
                     continue
+                # While the dropdown is open it owns the navigation keys, so
+                # Escape closes the menu rather than leaving the screen.
+                if self._filter_open:
+                    if event.key == pygame.K_ESCAPE:
+                        self._close_filter()
+                        continue
+                    if event.key == pygame.K_UP:
+                        self._move_filter(-1)
+                        continue
+                    if event.key == pygame.K_DOWN:
+                        self._move_filter(1)
+                        continue
+                    if event.key in (pygame.K_RETURN, pygame.K_KP_ENTER,
+                                     pygame.K_SPACE, pygame.K_f):
+                        self._commit_filter(self._filter_hover)
+                        continue
                 if event.key == pygame.K_ESCAPE:
                     return MainMenuScreen(
                         self._screen,
@@ -116,6 +141,7 @@ class LeaderboardScreen:
                         self._leaderboard,
                     )
                 if event.key == pygame.K_F12:
+                    self._close_filter()
                     self._confirm_reset = True
                     continue
                 if event.key == pygame.K_r:
@@ -125,18 +151,14 @@ class LeaderboardScreen:
                     self._sort_index = (self._sort_index + 1) % len(self._sort_options)
                     self._rows = self._load_rows()
                     self._set_notice(f"SORT  {self._sort_options[self._sort_index].upper()}")
-                # F or 1–4: cycle / jump to a mode filter
+                # F opens the mode dropdown; 1–4 pick a mode without opening it.
                 if event.key == pygame.K_f:
-                    self._filter_index = (self._filter_index + 1) % len(_FILTER_OPTIONS)
-                    self._rows = self._load_rows()
-                    label = _FILTER_LABELS[self._filter_index]
-                    self._set_notice(f"FILTER  {label}")
+                    self._open_filter()
+                    continue
                 for digit, idx in ((pygame.K_1, 0), (pygame.K_2, 1),
                                    (pygame.K_3, 2), (pygame.K_4, 3)):
                     if event.key == digit and idx < len(_FILTER_OPTIONS):
-                        self._filter_index = idx
-                        self._rows = self._load_rows()
-                        self._set_notice(f"FILTER  {_FILTER_LABELS[idx]}")
+                        self._commit_filter(idx)
             self._draw()
             pygame.display.flip()
 
@@ -157,20 +179,109 @@ class LeaderboardScreen:
         self._notice = message
         self._notice_timer = 2.0
 
+    # ── Mode filter dropdown ──────────────────────────────────────────────────
+
+    def _open_filter(self) -> None:
+        self._filter_open = True
+        self._filter_hover = self._filter_index
+        self._set_notice(f"FILTER  {_FILTER_LABELS[self._filter_index]}")
+
+    def _close_filter(self) -> None:
+        self._filter_open = False
+
+    def _move_filter(self, delta: int) -> None:
+        if not self._filter_open:
+            return
+        self._filter_hover = (self._filter_hover + delta) % len(_FILTER_OPTIONS)
+
+    def _select_filter(self, index: int) -> None:
+        self._filter_index = max(0, min(index, len(_FILTER_OPTIONS) - 1))
+        self._filter_hover = self._filter_index
+        self._rows = self._load_rows()
+        self._set_notice(f"FILTER  {_FILTER_LABELS[self._filter_index]}")
+
+    def _commit_filter(self, index: int) -> None:
+        self._filter_open = False
+        self._select_filter(index)
+
+    def _filter_rect(self) -> pygame.Rect:
+        """The closed dropdown control, top-right of the table header."""
+        ui = self._ui
+        table = self._table_rect()
+        width = min(ui.px(220), max(ui.px(120), table.width // 3))
+        height = ui.px(34)
+        centre_y = table.y + ui.px(66)
+        x = table.right - ui.px(24) - width
+        return pygame.Rect(x, centre_y - height // 2, width, height)
+
+    def _filter_menu_rect(self) -> pygame.Rect:
+        """The bounding box of the open option list, dropped under the control."""
+        ui = self._ui
+        control = self._filter_rect()
+        pad = ui.px(6)
+        height = pad * 2 + ui.px(34) * len(_FILTER_OPTIONS)
+        return pygame.Rect(control.x, control.bottom + ui.px(6), control.width, height)
+
+    def _filter_option_rects(self) -> list[pygame.Rect]:
+        """One flat row per option, inset inside the open menu container."""
+        ui = self._ui
+        menu = self._filter_menu_rect()
+        pad = ui.px(6)
+        row_height = ui.px(34)
+        return [
+            pygame.Rect(
+                menu.x + pad, menu.y + pad + index * row_height,
+                menu.width - pad * 2, row_height,
+            )
+            for index in range(len(_FILTER_OPTIONS))
+        ]
+
+    def _handle_motion(self, pos: tuple[int, int]) -> None:
+        self._filter_over_control = self._filter_rect().collidepoint(pos)
+        if not self._filter_open:
+            return
+        for index, rect in enumerate(self._filter_option_rects()):
+            if rect.collidepoint(pos):
+                self._filter_hover = index
+                break
+
+    def _handle_click(self, pos: tuple[int, int]) -> bool:
+        """Route a left click at the dropdown; True when it was consumed."""
+        if self._filter_rect().collidepoint(pos):
+            if self._filter_open:
+                self._close_filter()
+            else:
+                self._open_filter()
+            return True
+        if self._filter_open:
+            if self._filter_menu_rect().collidepoint(pos):
+                for index, rect in enumerate(self._filter_option_rects()):
+                    if rect.collidepoint(pos):
+                        self._commit_filter(index)
+                        return True
+                # Clicked the menu's padding: keep it open.
+                return True
+            # A click anywhere else dismisses the open menu.
+            self._close_filter()
+            return True
+        return False
+
     def _load_rows(self) -> list[dict[str, object]]:
         if self._leaderboard is None:
             return []
         try:
             mode_filter = _FILTER_OPTIONS[self._filter_index]
+            sort_by = self._sort_options[self._sort_index]
             # get_top accepts an optional mode keyword; fall back for older builds.
             if mode_filter is not None and hasattr(self._leaderboard, "get_top"):
                 try:
-                    return self._leaderboard.get_top(
-                        10, self._sort_options[self._sort_index], mode=mode_filter
-                    )
+                    return self._leaderboard.get_top(10, sort_by, mode=mode_filter)
                 except TypeError:
-                    pass
-            return self._leaderboard.get_top(10, self._sort_options[self._sort_index])
+                    # Pre-mode backend: narrow the rows here so the dropdown
+                    # still filters instead of silently showing everything.
+                    rows = self._leaderboard.get_top(10, sort_by)
+                    return [row for row in rows if row.get("mode") == mode_filter]
+            return self._leaderboard.get_top(10, sort_by)
         except (OSError, sqlite3.Error):
             return []
 
@@ -192,6 +303,7 @@ class LeaderboardScreen:
         ui.backdrop_fill(self._screen)
         self._stage.draw(self._screen, self._tick)
         self._draw_table()
+        self._draw_filter()
         if self._confirm_reset:
             self._draw_reset_prompt()
 
@@ -209,19 +321,15 @@ class LeaderboardScreen:
         ui.panel(
             self._screen, table,
             fill=PANEL_BG, alpha=230, border=HAIRLINE_DIM,
-            accent=NEON_CYAN, glow=0.25,
+            glow=0.25,
         )
 
         ui.text(
             self._screen, "LEADERBOARD", 34, TEXT_BRIGHT, table.centerx, table.y + ui.px(24),
             bold=True, anchor="midtop", glow=NEON_CYAN,
         )
-        # Subtitle: current sort + active mode filter.
-        active_filter = _FILTER_LABELS[self._filter_index]
-        subtitle = (
-            f"SORTED BY  {self._sort_options[self._sort_index].upper()}"
-            f"   ·   FILTER  {active_filter}"
-        )
+        # Subtitle: the active sort. The mode filter lives in the dropdown.
+        subtitle = f"SORTED BY  {self._sort_options[self._sort_index].upper()}"
         ui.text(
             self._screen, subtitle,
             13, TEXT_DIM, table.centerx, table.y + ui.px(66), anchor="midtop",
@@ -251,6 +359,74 @@ class LeaderboardScreen:
             self._draw_rows(table, header_y + ui.px(26))
 
         self._draw_footer(table)
+
+    def _draw_filter(self) -> None:
+        """The mode dropdown: a control box that expands into an option list."""
+        ui = self._ui
+        control = self._filter_rect()
+        active = self._filter_open or self._filter_over_control
+        ui.panel(
+            self._screen, control,
+            fill=SURFACE_RAISED, alpha=238,
+            border=NEON_CYAN if active else HAIRLINE_DIM,
+            glow=0.3 if self._filter_open else 0.1,
+        )
+        ui.text(
+            self._screen, "MODE", 11, TEXT_DIM,
+            control.x + ui.px(12), control.centery, bold=True, anchor="midleft",
+        )
+        mode = _FILTER_OPTIONS[self._filter_index]
+        colour = _MODE_COLOURS.get(mode, TEXT_BRIGHT) if mode else TEXT_BRIGHT
+        ui.text(
+            self._screen, _FILTER_LABELS[self._filter_index], 15, colour,
+            control.right - ui.px(30), control.centery, bold=True, anchor="midright",
+        )
+        # Caret, drawn rather than typed so it renders in any font.
+        cx, cy = control.right - ui.px(14), control.centery
+        size = ui.px(5)
+        if self._filter_open:
+            caret = [(cx - size, cy + size // 2), (cx + size, cy + size // 2),
+                     (cx, cy - size // 2)]
+        else:
+            caret = [(cx - size, cy - size // 2), (cx + size, cy - size // 2),
+                     (cx, cy + size // 2)]
+        pygame.draw.polygon(self._screen, NEON_CYAN if active else TEXT_DIM, caret)
+
+        if not self._filter_open:
+            return
+        menu = self._filter_menu_rect()
+        # A soft drop shadow lifts the menu clear of the table behind it.
+        shadow = menu.move(ui.px(3), ui.px(4))
+        shadow_surface = pygame.Surface(shadow.size, pygame.SRCALPHA)
+        pygame.draw.rect(
+            shadow_surface, (0, 0, 0, 120), shadow_surface.get_rect(),
+            border_radius=ui.px(10),
+        )
+        self._screen.blit(shadow_surface, shadow.topleft)
+        ui.panel(
+            self._screen, menu,
+            fill=SURFACE_RAISED, alpha=252, border=HAIRLINE,
+            glow=0.18,
+        )
+        for index, rect in enumerate(self._filter_option_rects()):
+            option = _FILTER_OPTIONS[index]
+            hovered = index == self._filter_hover
+            selected = index == self._filter_index
+            if hovered:
+                ui.select_row(self._screen, rect, selected=True, colour=NEON_CYAN)
+            option_colour = (
+                _MODE_COLOURS.get(option, TEXT_BRIGHT) if option else TEXT_BRIGHT
+            )
+            ui.text(
+                self._screen, _FILTER_LABELS[index], 15,
+                option_colour if (hovered or selected) else TEXT_BRIGHT,
+                rect.x + ui.px(12), rect.centery, bold=selected, anchor="midleft",
+            )
+            if selected:
+                pygame.draw.circle(
+                    self._screen, NEON_CYAN,
+                    (rect.right - ui.px(10), rect.centery), ui.px(4),
+                )
 
     def _column_x(self, table: pygame.Rect, fraction: float) -> int:
         return table.x + int(table.width * fraction)
@@ -332,7 +508,6 @@ class LeaderboardScreen:
     def _draw_footer(self, table: pygame.Rect) -> None:
         ui = self._ui
         if self._notice and self._notice_timer > 0:
-            fade = min(1.0, self._notice_timer / 0.5)
             ui.text(
                 self._screen, self._notice, 13, NEON_GREEN,
                 table.centerx, table.bottom - ui.px(56), bold=True, anchor="midtop",
@@ -341,7 +516,7 @@ class LeaderboardScreen:
             self._screen,
             [
                 ("S", "SORT"),
-                ("F / 1–4", "FILTER MODE"),
+                ("CLICK / F", "FILTER"),
                 ("R", "REFRESH"),
                 ("F12", "RESET"),
                 ("ESC", "BACK"),

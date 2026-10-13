@@ -2,51 +2,51 @@
   "language": "html",
   "challenges": {
     "EASY": [
-      {"id": "ht_e_01", "code": "<p>Hi</p>", "hint": "A paragraph", "points": 58},
-      {"id": "ht_e_02", "code": "<b>bold</b>", "hint": "Bold text", "points": 62},
-      {"id": "ht_e_03", "code": "<h1>Title</h1>", "hint": "A heading", "points": 68},
-      {"id": "ht_e_04", "code": "<br>", "hint": "A line break", "points": 48},
-      {"id": "ht_e_05", "code": "<hr>", "hint": "A rule", "points": 48},
-      {"id": "ht_e_06", "code": "<img src=\"a.png\">", "hint": "An image", "points": 74},
-      {"id": "ht_e_07", "code": "<a href=\"#\">Link</a>", "hint": "A link", "points": 80},
-      {"id": "ht_e_08", "code": "<div>Box</div>", "hint": "A div", "points": 68},
-      {"id": "ht_e_09", "code": "<input type=\"text\">", "hint": "A text box", "points": 78},
-      {"id": "ht_e_10", "code": "<ul><li>One</li></ul>", "hint": "A list", "points": 82}
+      {"id": "ht_e_01", "code": "<p></p>", "hint": "A paragraph", "points": 58},
+      {"id": "ht_e_02", "code": "<b></b>", "hint": "Bold text", "points": 62},
+      {"id": "ht_e_03", "code": "<i></i>", "hint": "Italic text", "points": 68},
+      {"id": "ht_e_04", "code": "<u></u>", "hint": "Underlined text", "points": 48},
+      {"id": "ht_e_05", "code": "<s></s>", "hint": "Struck-through text", "points": 48},
+      {"id": "ht_e_06", "code": "<em></em>", "hint": "Emphasised text", "points": 74},
+      {"id": "ht_e_07", "code": "<h1></h1>", "hint": "A top heading", "points": 80},
+      {"id": "ht_e_08", "code": "<h2></h2>", "hint": "A subheading", "points": 68},
+      {"id": "ht_e_09", "code": "<div></div>", "hint": "A block container", "points": 78},
+      {"id": "ht_e_10", "code": "<span></span>", "hint": "An inline container", "points": 82}
     ],
     "MEDIUM": [
-      {"id": "ht_m_01", "code": "<a href=\"https://x.com\">Go</a>", "hint": "An absolute link", "points": 120},
-      {"id": "ht_m_02", "code": "<p class=\"lead\">Intro</p>", "hint": "A classed paragraph", "points": 110},
-      {"id": "ht_m_03", "code": "<button type=\"submit\">Send</button>", "hint": "A submit button", "points": 130},
-      {"id": "ht_m_04", "code": "<img src=\"cat.jpg\" alt=\"Cat\">", "hint": "An image with alt text", "points": 118},
-      {"id": "ht_m_05", "code": "<table><tr><td>1</td></tr></table>", "hint": "A one-cell table", "points": 128},
-      {"id": "ht_m_06", "code": "<select name=\"p\"><option>One</option></select>", "hint": "A dropdown", "points": 152},
-      {"id": "ht_m_07", "code": "<label for=\"n\">Name</label>", "hint": "A label", "points": 114},
-      {"id": "ht_m_08", "code": "<span id=\"total\">0</span>", "hint": "A span with an id", "points": 110},
-      {"id": "ht_m_09", "code": "<div data-id=\"7\">Row</div>", "hint": "A data attribute", "points": 112},
-      {"id": "ht_m_10", "code": "<a href=\"/home\" class=\"nav\">Home</a>", "hint": "A classed link", "points": 132}
+      {"id": "ht_m_01", "code": "<nav></nav>", "hint": "A navigation block", "points": 120},
+      {"id": "ht_m_02", "code": "<main></main>", "hint": "The main content", "points": 110},
+      {"id": "ht_m_03", "code": "<head></head>", "hint": "The document head", "points": 130},
+      {"id": "ht_m_04", "code": "<body></body>", "hint": "The document body", "points": 118},
+      {"id": "ht_m_05", "code": "<form></form>", "hint": "A form", "points": 128},
+      {"id": "ht_m_06", "code": "<aside></aside>", "hint": "A side panel", "points": 152},
+      {"id": "ht_m_07", "code": "<label></label>", "hint": "A form label", "points": 114},
+      {"id": "ht_m_08", "code": "<button></button>", "hint": "A button", "points": 110},
+      {"id": "ht_m_09", "code": "<footer></footer>", "hint": "A page footer", "points": 112},
+      {"id": "ht_m_10", "code": "<header></header>", "hint": "A page header", "points": 132}
     ],
     "HARD": [
-      {"id": "ht_h_01", "code": "<form action=\"/save\" method=\"post\">Go</form>", "hint": "A form", "points": 188},
-      {"id": "ht_h_02", "code": "<input type=\"email\" name=\"m\" required>", "hint": "A required email field", "points": 176},
-      {"id": "ht_h_03", "code": "<video controls src=\"c.mp4\"></video>", "hint": "A video player", "points": 172},
-      {"id": "ht_h_04", "code": "<nav><a href=\"/a\">A</a></nav>", "hint": "A nav bar", "points": 158},
-      {"id": "ht_h_05", "code": "<td colspan=\"2\">Wide</td>", "hint": "A spanning cell", "points": 150},
-      {"id": "ht_h_06", "code": "<textarea name=\"b\" rows=\"4\"></textarea>", "hint": "A text area", "points": 178},
-      {"id": "ht_h_07", "code": "<time datetime=\"2026-01-05\">Jan 5</time>", "hint": "A machine date", "points": 180},
-      {"id": "ht_h_08", "code": "<dialog open><p>Sure?</p></dialog>", "hint": "A dialog", "points": 168},
-      {"id": "ht_h_09", "code": "<progress value=\"7\" max=\"10\"></progress>", "hint": "A progress bar", "points": 180},
-      {"id": "ht_h_10", "code": "<details><summary>More</summary></details>", "hint": "A disclosure", "points": 184}
+      {"id": "ht_h_01", "code": "<figure></figure>", "hint": "A figure", "points": 188},
+      {"id": "ht_h_02", "code": "<legend></legend>", "hint": "A fieldset legend", "points": 176},
+      {"id": "ht_h_03", "code": "<option></option>", "hint": "A dropdown option", "points": 172},
+      {"id": "ht_h_04", "code": "<select></select>", "hint": "A dropdown", "points": 158},
+      {"id": "ht_h_05", "code": "<section></section>", "hint": "A page section", "points": 150},
+      {"id": "ht_h_06", "code": "<article></article>", "hint": "An article", "points": 178},
+      {"id": "ht_h_07", "code": "<summary></summary>", "hint": "A disclosure summary", "points": 180},
+      {"id": "ht_h_08", "code": "<textarea></textarea>", "hint": "A multi-line field", "points": 168},
+      {"id": "ht_h_09", "code": "<blockquote></blockquote>", "hint": "A quotation", "points": 180},
+      {"id": "ht_h_10", "code": "<figcaption></figcaption>", "hint": "A figure caption", "points": 184}
     ],
     "EXPERT": [
-      {"id": "ht_x_01", "code": "<a href=\"/a\" target=\"_blank\" rel=\"noopener\">Docs</a>", "hint": "A safe new-tab link", "points": 376},
-      {"id": "ht_x_02", "code": "<select onchange=\"set(v)\">Pick</select>", "hint": "A reacting dropdown", "points": 337},
-      {"id": "ht_x_03", "code": "<input type=\"checkbox\" checked required>Yes", "hint": "A required checkbox", "points": 349},
-      {"id": "ht_x_04", "code": "<template id=\"row\"><td></td></template>", "hint": "A row template", "points": 337},
-      {"id": "ht_x_05", "code": "<audio controls src=\"b.mp3\"></audio>", "hint": "An audio player", "points": 328},
-      {"id": "ht_x_06", "code": "<output name=\"r\">0</output>", "hint": "A result readout", "points": 301}
+      {"id": "ht_x_01", "code": "<ul><li></li></ul>", "hint": "A list with one item", "points": 376},
+      {"id": "ht_x_02", "code": "<ol><li></li></ol>", "hint": "A numbered list", "points": 337},
+      {"id": "ht_x_03", "code": "<table><tr></tr></table>", "hint": "A table with one row", "points": 349},
+      {"id": "ht_x_04", "code": "<div><span></span></div>", "hint": "A nested block", "points": 337},
+      {"id": "ht_x_05", "code": "<section><p></p></section>", "hint": "A section with a paragraph", "points": 328},
+      {"id": "ht_x_06", "code": "<select><option></option></select>", "hint": "A dropdown with an option", "points": 301}
     ],
     "BOSS": [
-      {"id": "ht_b_01", "code": "<div class=\"grid\" style=\"display:flex;gap:8px\">", "hint": "Inline flex layout", "points": 608}
+      {"id": "ht_b_01", "code": "<ul><li></li><li></li><li></li></ul>", "hint": "A three-item list", "points": 608}
     ]
   }
 }
