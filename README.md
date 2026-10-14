@@ -61,7 +61,7 @@ so the whole game is played from the home row.
    you lose a life.
 5. Clear every snippet in a wave to advance. Lose all lives and the run ends.
 
-Starting lives: 3 (maximum 5). Reaching zero ends the run.
+Lives: 3
 
 ### Enemies
 
