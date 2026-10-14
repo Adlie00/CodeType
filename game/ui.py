@@ -7,7 +7,6 @@ from collections import OrderedDict
 import pygame
 
 from game.constants import (
-    BOSS_STATION_FRACTION,
     BOSS_SWAY,
     BOSS_WIDTH_BONUS,
     DESIGN_HEIGHT,
@@ -127,10 +126,6 @@ class Layout:
     def travel(self) -> float:
         """Display pixels an enemy falls before crossing the danger line."""
         return max(40.0, self.danger_line - self.spawn_clearance_y)
-
-    def boss_station(self) -> float:
-        top = self.hud_height + int(round(24 * self.scale))
-        return top + BOSS_STATION_FRACTION * (self.danger_line - top)
 
     def column_band(self, card_width: int) -> tuple[float, float]:
         """Leftmost and rightmost x a card of ``card_width`` may sit at.

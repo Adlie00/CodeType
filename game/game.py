@@ -206,10 +206,6 @@ class Game:
     def _danger_line(self) -> float:
         return self._layout.danger_line
 
-    @property
-    def _boss_station(self) -> float:
-        return self._layout.boss_station()
-
     def _competition_rival(self) -> tuple[str, int] | None:
         """Name and score of the top competition player who is not this one.
 
@@ -314,7 +310,6 @@ class Game:
                 self._danger_line, queue_seconds=self._queue_typing_seconds(enemy)
             )
             if getattr(enemy, "is_boss", False):
-                enemy.station_y = self._boss_station
                 enemy.begin_intro()
                 self._banner = "WARNING  //  BOSS INBOUND"
                 self._banner_timer = 2.4

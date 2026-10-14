@@ -116,10 +116,10 @@ ENEMY_FOOTER_HEIGHT   = 20
 ENEMY_SWAY_SPECIAL    = 46
 ENEMY_SWAY_FAST       = 5
 BOSS_INTRO_SECONDS    = 2.2
-# A boss card is the longest in the game, so a falling boss could never be
-# typed before it crossed the screen. The boss descends to a station inside the
-# play field and holds there; the wave cannot end until it is destroyed.
-BOSS_STATION_FRACTION = 0.26
+# A boss card is the longest in the game and falls at the slowest base speed.
+# It descends to the warning line like any other enemy, but the fairness cap in
+# Enemy.limit_speed_for bounds it against its own typing time so it cannot cross
+# before the player could reasonably have finished it.
 BOSS_SWAY             = 6
 BOSS_WIDTH_BONUS      = 70
 WARNING_BAND_HEIGHT   = 26

@@ -151,16 +151,18 @@ class PacingTests(unittest.TestCase):
         travel = DANGER - long.y
         self.assertGreaterEqual(travel / long.speed, 260 / 8.0)
 
-    def test_a_boss_is_never_speed_capped(self) -> None:
+    def test_a_boss_is_speed_capped_to_its_own_typing_time(self) -> None:
         boss = Boss(make_challenge("a" * 500, boss=True), start_y=0.0)
-        before = boss.speed
         boss.limit_speed_for(DANGER)
-        self.assertAlmostEqual(boss.speed, before)
+        self.assertTrue(boss.speed_limited, "a 500-char boss must be speed capped")
+        # Enough travel time to type the snippet at the reference pace.
+        travel = DANGER - boss.y
+        self.assertGreaterEqual(travel / boss.speed, 500 / 8.0)
 
 
 class BossTests(unittest.TestCase):
     def setUp(self) -> None:
-        self.boss = Boss(make_challenge("a" * 300, boss=True), station_y=200.0)
+        self.boss = Boss(make_challenge("a" * 300, boss=True))
         self.boss.begin_intro()
 
     def test_intro_holds_the_boss_above_the_field(self) -> None:
@@ -172,13 +174,16 @@ class BossTests(unittest.TestCase):
         self.boss.update(BOSS_INTRO_SECONDS, DANGER)
         self.assertFalse(self.boss.intro_active)
 
-    def test_boss_anchors_at_its_station_and_never_escapes(self) -> None:
+    def test_boss_keeps_descending_and_escapes(self) -> None:
         self.boss.update(BOSS_INTRO_SECONDS + 0.1, DANGER)
-        for _ in range(2000):
-            self.boss.update(1 / 60, DANGER)
-        self.assertTrue(self.boss.stationed)
-        self.assertAlmostEqual(self.boss.y, 200.0, places=5)
-        self.assertFalse(self.boss.escaped, "an anchored boss must never reach the line")
+        start = self.boss.y
+        self.boss.update(0.5, DANGER)
+        self.assertGreater(self.boss.y, start, "a boss must keep descending")
+        for _ in range(4000):
+            self.boss.update(0.5, DANGER)
+        self.assertTrue(
+            self.boss.escaped, "a boss that is not typed must reach the line"
+        )
 
     def test_phases_track_remaining_health(self) -> None:
         self.boss.update(BOSS_INTRO_SECONDS + 0.1, DANGER)

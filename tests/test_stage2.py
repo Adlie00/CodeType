@@ -306,6 +306,29 @@ class WaveManagerTests(unittest.TestCase):
         for _ in range(30):
             self.assertTrue(manager.advance(0))
 
+    def test_endless_rolls_a_fresh_language_each_wave(self) -> None:
+        # The old bug froze generated waves on the ladder's first language (HTML).
+        # Over sixty waves a ten-language pool will not come up identical.
+        manager = WaveManager(self.content, "endless")
+        ladder = {wave.language for wave in self.content.available_waves}
+        seen = {manager.current_wave.language}
+        for _ in range(60):
+            self.assertTrue(manager.advance(0))
+            language = manager.current_wave.language
+            self.assertIn(language, ladder)
+            for order in manager._queue:
+                self.assertEqual(order.challenge.language, language)
+            seen.add(language)
+        self.assertGreater(len(seen), 1, "endless waves must not stay on one language")
+
+    def test_endless_display_name_tracks_the_language(self) -> None:
+        manager = WaveManager(self.content, "endless")
+        names = {wave.language: wave.display_name for wave in self.content.available_waves}
+        for _ in range(20):
+            language = manager.current_wave.language
+            self.assertEqual(manager.language_name, f"{names[language]} ENDLESS")
+            self.assertTrue(manager.advance(0))
+
     def test_boss_waves_queue_exactly_one_boss(self) -> None:
         manager = WaveManager(self.content)
         boss_waves = []

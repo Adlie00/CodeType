@@ -193,7 +193,7 @@ class LayoutPacingTests(unittest.TestCase):
                         "16:9 should keep the authored uniform scaling",
                     )
 
-    def test_a_boss_anchored_at_its_station_never_reaches_the_line(self) -> None:
+    def test_a_boss_descends_and_escapes_at_every_size(self) -> None:
         from game.boss import Boss
 
         for width, height in DISPLAY_SIZES:
@@ -203,18 +203,18 @@ class LayoutPacingTests(unittest.TestCase):
 
                 boss = Boss(
                     make_challenge("a" * 300, boss=True),
-                    station_y=layout.boss_station(),
                     layout=layout,
                 )
                 boss.begin_intro()
                 from game.constants import BOSS_INTRO_SECONDS
 
                 boss.update(BOSS_INTRO_SECONDS + 0.1, layout.danger_line)
-                for _ in range(2000):
+                self.assertLess(boss.y, layout.danger_line)
+                start = boss.y
+                for _ in range(6000):
                     boss.update(1 / 60, layout.danger_line)
-                self.assertTrue(boss.stationed)
-                self.assertAlmostEqual(boss.y, layout.boss_station(), places=3)
-                self.assertFalse(boss.escaped)
+                self.assertGreater(boss.y, start, "a boss must keep descending")
+                self.assertTrue(boss.escaped)
 
 
 class UiScaleTests(unittest.TestCase):
@@ -326,7 +326,7 @@ class LiveResizeTests(unittest.TestCase):
             self.assertAlmostEqual(enemy.speed, expected_cap(), delta=0.01,
                                    msg=f"cap does not match the position at {size}")
 
-    def test_a_boss_returns_to_its_station_after_a_resize_round_trip(self) -> None:
+    def test_a_boss_keeps_descending_across_a_resize(self) -> None:
         from game.boss import Boss
         from tests.test_stage4 import make_challenge
 
@@ -334,7 +334,6 @@ class LiveResizeTests(unittest.TestCase):
         layout = game._layout
         boss = Boss(
             make_challenge("x = compute()" * 30, boss=True),
-            station_y=layout.boss_station(),
             layout=layout,
         )
         game._enemies.append(boss)
@@ -342,22 +341,20 @@ class LiveResizeTests(unittest.TestCase):
         from game.constants import BOSS_INTRO_SECONDS
 
         boss.update(BOSS_INTRO_SECONDS + 0.1, layout.danger_line)
-        for _ in range(2000):
+        for _ in range(120):
             boss.update(1 / 60, layout.danger_line)
-        self.assertTrue(boss.stationed)
-        expected, base_scale = layout.boss_station(), layout.scale
 
-        # Asserted at every size, not just the way back: a boss that keeps its
-        # pixel station through a shrink is parked far below the field it now
-        # has to fit in. The scale is read up front because under the bug the
-        # old layout is the same object as the new one.
-        for size in ((1280, 720), (1920, 1080)):
-            game.draw(pygame.display.set_mode(size))
-            self.assertAlmostEqual(boss.station_y,
-                                   expected * game._layout.scale / base_scale,
-                                   delta=1.0, msg=f"station wrong at {size}")
-            self.assertAlmostEqual(boss.y, boss.station_y, delta=1.0)
-            self.assertLess(boss.y, game._layout.danger_line)
+        # Resizing must rescale the boss, keep it inside the new field, and let
+        # it carry on descending rather than snapping to a stale position.
+        game.draw(pygame.display.set_mode((1280, 720)))
+        self.assertLess(boss.y, game._layout.danger_line)
+        self.assertGreaterEqual(boss.x, -boss.width)
+        self.assertLessEqual(boss.x + boss.width, game._layout.width)
+
+        mid = boss.y
+        for _ in range(120):
+            boss.update(1 / 60, game._layout.danger_line)
+        self.assertGreater(boss.y, mid, "the boss must keep descending after a resize")
 
     def test_a_run_survives_a_resize_mid_flight(self) -> None:
         screen, game = self._game(1920, 1080)
@@ -398,31 +395,21 @@ class LiveResizeTests(unittest.TestCase):
         self.assertAlmostEqual(game._layout.scale, 1.5)
         self.assertAlmostEqual(game._layout.speed(NOMINAL), NOMINAL * 1.5, delta=0.2)
 
-    def test_a_boss_stays_on_its_station_across_a_resize(self) -> None:
+    def test_a_boss_keeps_its_lane_across_a_resize(self) -> None:
         from game.boss import Boss
         from tests.test_stage4 import make_challenge
 
         layout = Layout(1920, 1080)
         boss = Boss(
             make_challenge("a" * 300, boss=True),
-            station_y=layout.boss_station(),
             station=0.5,
             layout=layout,
         )
         lane = boss.station
         boss.begin_intro()
-        from game.constants import BOSS_INTRO_SECONDS
-
-        boss.update(BOSS_INTRO_SECONDS + 0.1, layout.danger_line)
-        for _ in range(2000):
-            boss.update(1 / 60, layout.danger_line)
-        self.assertTrue(boss.stationed)
-        old_station = boss.station_y
 
         smaller = Layout(1280, 720)
         boss.rebase(smaller)
-        self.assertAlmostEqual(boss.station_y, old_station * 1.0 / 1.5, places=1)
-        self.assertAlmostEqual(boss.y, boss.station_y, places=5)
         self.assertAlmostEqual(boss.station, lane, places=5)
         self.assertAlmostEqual(
             boss.x, smaller.column_x(boss.width, lane), places=5
@@ -430,7 +417,6 @@ class LiveResizeTests(unittest.TestCase):
         self.assertAlmostEqual(
             boss.width, smaller.enemy_width + smaller.boss_width_bonus, places=5
         )
-        self.assertFalse(boss.escaped)
 
     def test_a_stage_reports_staleness_and_adopts_a_new_ui(self) -> None:
         from game.ui import Stage
@@ -1268,14 +1254,16 @@ class QueuePacingTests(unittest.TestCase):
         # work requires keeps its nominal speed and gains slack.
         self.assertGreaterEqual(time_to_line, work)
 
-    def test_a_boss_is_never_capped(self) -> None:
+    def test_a_boss_is_capped_like_any_other_enemy(self) -> None:
         from game.boss import Boss
         from tests.test_stage4 import make_challenge
 
         boss = Boss(make_challenge("a" * 500, boss=True), start_y=0.0)
-        before = boss.speed
-        boss.limit_speed_for(self.DANGER, queue_seconds=1.0)
-        self.assertAlmostEqual(boss.speed, before)
+        boss.limit_speed_for(self.DANGER)
+        self.assertTrue(boss.speed_limited, "a boss must respect the fairness cap")
+        self.assertLess(boss.speed, boss.nominal_speed)
+        travel = self.DANGER - boss.y
+        self.assertGreaterEqual(travel / boss.speed, len(boss.text) / self.CPS)
 
     def test_the_game_sums_the_live_queue_when_spawning(self) -> None:
         """The caller must pass the real total, not leave it to the fallback.
@@ -1711,8 +1699,11 @@ class WarmupModeTests(unittest.TestCase):
 
     def test_warmup_spawns_without_waves_like_endless(self) -> None:
         game = self._game("warmup")
-        self.assertFalse(game._wave_manager.is_campaign)
-        self.assertIn("WARMUP", game._wave_manager.language_name.upper())
+        manager = game._wave_manager
+        self.assertFalse(manager.is_campaign)
+        self.assertIn("WARMUP", manager.language_name.upper())
+        ladder = {wave.language for wave in manager._campaign_waves}
+        self.assertIn(manager.current_wave.language, ladder)
 
     def test_the_clock_running_out_goes_to_the_summary(self) -> None:
         from screens.game_over_screen import GameOverScreen

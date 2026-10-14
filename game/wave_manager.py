@@ -71,6 +71,13 @@ class WaveManager:
         self._campaign_waves = content.available_waves
         if not self._campaign_waves:
             raise ContentError("No complete campaign wave data is available")
+        # Endless-family waves are generated, so they roll a fresh language every
+        # wave instead of inheriting HTML from the campaign's opener. The ladder
+        # covers every shipped language, so it doubles as both the pool and the
+        # source of the display names.
+        self._languages = tuple(dict.fromkeys(w.language for w in self._campaign_waves))
+        self._language_names = {w.language: w.display_name for w in self._campaign_waves}
+        self._endless_enemy_count = self._campaign_waves[0].enemy_count
         self._wave_index = 0
         self._endless_wave_number = 1
         self._endless_bosses = 0
@@ -192,18 +199,8 @@ class WaveManager:
             return True
 
         self._endless_wave_number += 1
-        self._current_wave = WaveConfig(
-            wave_number=self._endless_wave_number,
-            language=self._current_wave.language,
-            display_name=self._current_wave.display_name,
-            difficulty_progression=(
-                difficulty_for_endless(self._endless_wave_number, self._start_difficulty),
-            ),
-            enemy_count=self._current_wave.enemy_count,
-            boss_wave=False,
-            boss_language=None,
-            spawn_interval=self._content.endless_base_interval,
-            description=f"{self._mode_suffix.title()} challenge",
+        self._current_wave = self._endless_wave(
+            self._endless_wave_number, self._random_language()
         )
         self._prepare_wave()
         return True
@@ -259,15 +256,27 @@ class WaveManager:
     def _initial_wave(self) -> WaveConfig:
         if self._is_campaign:
             return self._campaign_waves[0]
-        base = self._campaign_waves[0]
+        return self._endless_wave(1, self._random_language())
+
+    def _random_language(self) -> str:
+        """Pick the language for a generated endless-family wave."""
+        return random.choice(self._languages)
+
+    def _endless_wave(self, wave_number: int, language: str) -> WaveConfig:
+        """Build one generated wave for the chosen language.
+
+        Only the language is rolled per wave; difficulty, enemy count and pace
+        follow the endless schedule exactly as before.
+        """
+        name = self._language_names.get(language, language.upper())
         return WaveConfig(
-            wave_number=1,
-            language=base.language,
-            display_name=f"{base.display_name} {self._mode_suffix}",
+            wave_number=wave_number,
+            language=language,
+            display_name=f"{name} {self._mode_suffix}",
             difficulty_progression=(
-                difficulty_for_endless(1, self._start_difficulty),
+                difficulty_for_endless(wave_number, self._start_difficulty),
             ),
-            enemy_count=base.enemy_count,
+            enemy_count=self._endless_enemy_count,
             boss_wave=False,
             boss_language=None,
             spawn_interval=self._content.endless_base_interval,
@@ -367,8 +376,9 @@ class WaveManager:
     def _typing_floor(self) -> float:
         """Reference time to type the next queued snippet.
 
-        Bosses are exempt: they anchor at their station and halt new spawns, so
-        delaying their arrival would just stall the wave.
+        Bosses are exempt: a boss gets its own generous fall time from the speed
+        cap, and it halts new spawns anyway, so delaying its arrival would just
+        stall the wave.
         """
         if not self._queue or self._queue[0].is_boss:
             return 0.0

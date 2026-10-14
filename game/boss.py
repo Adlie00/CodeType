@@ -18,7 +18,17 @@ from game.ui import DESIGN_LAYOUT, Layout
 
 
 class Boss(Enemy):
-    """A long-code enemy with an intro sequence and three damage phases."""
+    """A long-code enemy with an intro sequence and three damage phases.
+
+    Unlike the shorter types, a boss does not take up a fixed station: it keeps
+    descending toward the warning line like any other card. Its snippet is the
+    longest in the game, so it relies on two things to stay fair — the tier's
+    slow base speed (``ENEMY_BASE_SPEEDS[ENEMY_BOSS]``) and the fairness cap in
+    :meth:`Enemy.limit_speed_for`, which bounds it against the typing time of
+    its own snippet. Normal spawns pause while one is on the field, so the fight
+    is a single, wide, three-phase typing test that only ends when the snippet
+    is cleared or it slips past the line.
+    """
 
     def __init__(
         self,
@@ -27,7 +37,6 @@ class Boss(Enemy):
         column_x: float | None = None,
         station: float | None = None,
         start_y: float | None = None,
-        station_y: float = 200.0,
         layout: Layout | None = None,
     ) -> None:
         super().__init__(
@@ -42,13 +51,11 @@ class Boss(Enemy):
         geo = DESIGN_LAYOUT if layout is None else layout
         self.width = geo.enemy_width + geo.boss_width_bonus
         self.height = max(self.height, panel_height(challenge.text, geo))
-        # A boss card is wider, so its lane band is narrower: the station is the
-        # same choice of lane, re-resolved against the wider card.
+        # A boss card is wider, so its lane band is narrower: the lane is
+        # re-resolved against the wider card.
         self._place_in_lane(column_x)
         self.x = self.column_x
         self.phase = 1
-        self.station_y = float(station_y)
-        self.stationed = False
         self.intro_timer = BOSS_INTRO_SECONDS
         self.intro_active = start_y is None
 
@@ -60,7 +67,6 @@ class Boss(Enemy):
         """Re-arm the arrival banner and park the boss above the play field."""
         self.intro_active = True
         self.intro_timer = BOSS_INTRO_SECONDS
-        self.stationed = False
         self.y = -float(self.height)
 
     @property
@@ -72,22 +78,18 @@ class Boss(Enemy):
         return NEON_RED if self.intro_active else self.phase_colour
 
     def rebase(self, layout: Layout) -> None:
-        """Re-derive boss geometry and keep the station under the card.
+        """Re-derive boss geometry and keep the lane under the card.
 
         A boss overrides the base rebase because it is wider than a normal card
-        and parks at a station rather than at the top of the lane. Widening it
-        narrows the lane band, so the lane is re-resolved from the station
-        after the new width is known.
+        and the lane band depends on the card width, so the lane is re-resolved
+        after the new width is known. Descent is left to the base class: the
+        position scales with the layout, and the caller re-applies the speed cap.
         """
-        ratio = layout.scale / self.layout.scale if self.layout.scale else 1.0
-        self.station_y *= ratio
         super().rebase(layout)
         self.width = layout.enemy_width + layout.boss_width_bonus
         self.height = max(self.height, panel_height(self.text, layout))
         self._place_in_lane()
         self.x = self.column_x
-        if self.stationed:
-            self.y = self.station_y
 
     def update(self, dt: float, danger_line: float) -> None:
         step = max(0.0, dt)
@@ -98,15 +100,7 @@ class Boss(Enemy):
                 self.intro_active = False
             return
         super().update(step, danger_line)
-        self._settle(step)
         self._update_phase()
-
-    def _settle(self, dt: float) -> None:
-        """Descend to the station, then hold. A boss never reaches the line."""
-        if self.y >= self.station_y:
-            self.stationed = True
-            self.y = self.station_y
-            self.x = self.column_x + math.sin(self.age * 1.6) * self.layout.boss_sway
 
     def _update_phase(self) -> None:
         remaining = self.health_ratio

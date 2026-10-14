@@ -84,11 +84,13 @@ depending on difficulty, which keeps a tier's workload in a sane band.
 Waves 3, 5, 7, 9, and 10 each end in a boss, and endless mode spawns one every
 20 kills.
 
-A boss announces itself, slides in, and then **anchors at a station** in one of
-the field's lanes. It does not descend to the warning line, so it cannot
-be simply ignored — you have to clear it. While a boss is on screen, normal
-enemies stop spawning, so the fight is a pure typing test. Bosses have three
-health phases (full → 66% → 33%), each change recolouring the boss and
+A boss announces itself, slides in, and then **descends slowly toward the warning
+line** in one of the field's lanes. Its snippet is the longest in the game, so
+its base speed is the slowest of any enemy and the fairness cap slows it further
+so it cannot cross before you could reasonably type it out. It is still a threat:
+let it reach the line and you lose a life. While a boss is on screen, normal
+enemies stop spawning, so the fight is a single, wide typing test. Bosses have
+three health phases (full → 66% → 33%), each change recolouring the boss and
 triggering a flash. Boss kills are worth 3× score.
 
 ---
@@ -98,9 +100,9 @@ triggering a flash. Boss kills are worth 3× score.
 | Mode | Description |
 | --- | --- |
 | **Campaign** | The 10-wave ladder below. Clearing wave 10 wins the run. |
-| **Endless** | Procedurally generated waves that keep getting faster (spawn interval decays from 4.0s toward a 1.0s floor). A boss appears every 20 kills. Survive as long as you can. |
+| **Endless** | Procedurally generated waves that keep getting faster (spawn interval decays from 4.0s toward a 1.0s floor), drawing a random language each wave. A boss appears every 20 kills. Survive as long as you can. |
 | **Competition** | The same 10 waves as Campaign, scored and recorded separately on the leaderboard. |
-| **Warmup** | A 30-second, unscored practice run with no lives. When the clock runs out it shows a summary; runs are never recorded on the leaderboard. |
+| **Warmup** | A 30-second, unscored practice run with no lives, drawing a random language each wave. When the clock runs out it shows a summary; runs are never recorded on the leaderboard. |
 
 ## The campaign ladder
 
@@ -379,11 +381,15 @@ larger than a long one on a card of the same height.
 
 A few decisions worth calling out, because they are not obvious from the code:
 
-- **Bosses anchor instead of descending.** Boss snippets run roughly 240–400
-  characters. A boss that fell like a normal enemy would simply pass the warning
+- **Bosses descend, just slowly.** Boss snippets run roughly 240–400
+  characters. A boss that fell at a normal enemy's pace would pass the warning
   line while you were still halfway through it, which is neither a threat nor a
-  fair challenge. Anchoring makes the fight a pure typing test and pauses the
-  normal spawns while it lasts.
+  fair challenge. So a boss uses the slowest base speed in the game and is
+  bounded by the same fairness cap as every other enemy: the cap divides the
+  remaining travel by the real typing time of its snippet, so it reaches the
+  line only once you could reasonably have finished it. Normal spawns pause
+  while it lasts, so the fight is a single, wide typing test — but a boss you
+  ignore still costs a life.
 - **Cards take a lane, not a fixed column.** The field is split into three
   evenly spaced lanes and each spawn takes a random one, so code arrives from
   across the screen instead of always sliding down the left edge. A lane is

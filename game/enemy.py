@@ -2,7 +2,10 @@
 
 Enemies descend vertically from above the play field. ``y`` is the falling
 axis, ``x`` is the display column: a card sits in one of the field's lanes
-and stays there, with only the Special type drifting sideways.
+and stays there, with Special, Fast and Boss drifting sideways.
+
+Every enemy, bosses included, is bounded by :meth:`Enemy.limit_speed_for`, so
+none can reach the warning line before its snippet could reasonably be typed.
 """
 
 from __future__ import annotations
@@ -219,8 +222,6 @@ class Enemy:
         ``speed``, so re-applying it after a resize recomputes the cap from the
         new layout instead of ratcheting an already-capped enemy lower.
         """
-        if self.is_boss:
-            return  # anchors at its station; never reaches the danger line
         travel = max(1.0, danger_line - self.y)
         if queue_seconds is None:
             typing_seconds = max(1.0, len(self.text) / max(0.1, reference_cps))
@@ -278,6 +279,11 @@ class Enemy:
         elif self.enemy_type == ENEMY_TANK:
             self.pulse = (math.sin(self.age * 4.0) + 1.0) / 2.0
             self.x = self.column_x
+        elif self.enemy_type == ENEMY_BOSS:
+            self.x = (
+                self.column_x
+                + math.sin(self.age * 1.6 + self._jitter_seed) * self.layout.boss_sway
+            )
         else:
             self.x = self.column_x
 
