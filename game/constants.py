@@ -199,9 +199,18 @@ MODE_CAMPAIGN    = "campaign"
 MODE_ENDLESS     = "endless"
 MODE_COMPETITION = "competition"
 MODE_WARMUP      = "warmup"
+MODE_ARCADE      = "arcade"
 # Warmup is a timed, unscored practice session: no lives, and the clock is the
 # only thing that ends it. Runs are never recorded on the leaderboard.
 WARMUP_SECONDS   = 30.0
+# Arcade is the timed score attack: 120s on the clock, no lives, and every kill
+# buys seconds back. The bonus is deliberately generous so an elite player can
+# chain kills into a much longer run — that chain *is* the skill ceiling — while
+# a run that never keeps up ends at the starting clock. Runs are recorded on
+# the leaderboard's arcade board.
+ARCADE_SECONDS     = 120.0
+ARCADE_KILL_SECONDS = 2.0
+ARCADE_BOSS_SECONDS = 8.0
 
 # ── Scoring ───────────────────────────────────────────────────────────────────
 #   total = (base + wave + speed + accuracy) x difficulty x combo x boss

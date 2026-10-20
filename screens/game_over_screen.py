@@ -9,6 +9,7 @@ import pygame
 from game.constants import (
     DIFFICULTY_EASY,
     HAIRLINE_DIM,
+    MODE_ARCADE,
     MODE_COMPETITION,
     MODE_WARMUP,
     NEON_CYAN,
@@ -204,8 +205,12 @@ class GameOverScreen:
             accent=accent, glow=0.35 + 0.25 * pulse(self._tick, 1.8),
         )
 
-        title = "WARM-UP COMPLETE" if self._stats.get("mode") == MODE_WARMUP else (
-            "ALL WAVES CLEARED" if self._victory else "GAME OVER"
+        title = (
+            "WARM-UP COMPLETE"
+            if self._stats.get("mode") == MODE_WARMUP
+            else "TIME UP"
+            if self._stats.get("mode") == MODE_ARCADE
+            else ("ALL WAVES CLEARED" if self._victory else "GAME OVER")
         )
         ui.text(
             self._screen, title, 40, accent, panel.centerx, panel.y + ui.px(26),

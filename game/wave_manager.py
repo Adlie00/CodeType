@@ -15,6 +15,7 @@ from game.constants import (
     ENEMY_NORMAL,
     ENDLESS_BOSS_EVERY,
     MIN_SPAWN_INTERVAL,
+    MODE_ARCADE,
     MODE_CAMPAIGN,
     MODE_COMPETITION,
     MODE_WARMUP,
@@ -111,7 +112,11 @@ class WaveManager:
     @property
     def _mode_suffix(self) -> str:
         """The label endless-family modes stamp on their generated wave names."""
-        return "WARMUP" if self._mode == MODE_WARMUP else "ENDLESS"
+        if self._mode == MODE_WARMUP:
+            return "WARMUP"
+        if self._mode == MODE_ARCADE:
+            return "ARCADE"
+        return "ENDLESS"
 
     @property
     def current_wave(self) -> WaveConfig:

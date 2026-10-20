@@ -24,6 +24,9 @@ from game.audio_manager import (
     SFX_WAVE_CLEAR,
 )
 from game.constants import (
+    ARCADE_BOSS_SECONDS,
+    ARCADE_KILL_SECONDS,
+    ARCADE_SECONDS,
     CURSOR_COLOUR,
     DARK_BG,
     DESCENT_REFERENCE_CPS,
@@ -33,6 +36,7 @@ from game.constants import (
     ERROR_COLOUR,
     GREY,
     HAIRLINE_DIM,
+    MODE_ARCADE,
     MODE_COMPETITION,
     MODE_ENDLESS,
     MODE_WARMUP,
@@ -108,6 +112,10 @@ class Game:
         # Warmup is a timed practice session: no lives, and the clock is the
         # only thing that can end it. At zero the screen drops into competition.
         self._warmup_remaining = WARMUP_SECONDS if mode == MODE_WARMUP else 0.0
+        # Arcade is the timed score attack: the clock is again the only thing
+        # that can end the run, but this one is recorded, and every kill buys
+        # seconds back onto the same clock.
+        self._arcade_remaining = ARCADE_SECONDS if mode == MODE_ARCADE else 0.0
 
         width, height = screen.get_size()
         self._ui = UI(assets, width, height)
@@ -129,6 +137,8 @@ class Game:
         self._message = (
             f"WARM UP  //  {int(WARMUP_SECONDS)}s"
             if mode == MODE_WARMUP
+            else f"ARCADE  //  {int(ARCADE_SECONDS)}s  //  KILLS ADD TIME"
+            if mode == MODE_ARCADE
             else f"WAVE {self._wave_manager.wave_number}  //  {self._wave_manager.language_name}"
         )
         self._message_timer = 2.5
@@ -257,6 +267,11 @@ class Game:
             if self._warmup_remaining <= 0.0:
                 self._finish_warmup()
                 return
+        elif self._state.mode == MODE_ARCADE:
+            self._arcade_remaining = max(0.0, self._arcade_remaining - step)
+            if self._arcade_remaining <= 0.0:
+                self._finish_arcade()
+                return
         self._message_timer = max(0.0, self._message_timer - step)
         self._banner_timer = max(0.0, self._banner_timer - step)
         if self._banner_timer <= 0.0:
@@ -340,10 +355,11 @@ class Game:
 
     def _on_enemy_escaped(self, enemy) -> None:
         centre_x, centre_y = enemy.x + enemy.width / 2, enemy.y
-        # Neither endless nor warmup has lives: an escape breaks the combo and
-        # pings the field, but it can never end the run.
+        # Neither endless, warmup nor arcade has lives: an escape breaks the
+        # combo and pings the field, but it can never end the run.
         ended = self._state.record_missed_enemy(
-            costs_life=self._state.mode not in (MODE_ENDLESS, MODE_WARMUP)
+            costs_life=self._state.mode
+            not in (MODE_ENDLESS, MODE_WARMUP, MODE_ARCADE)
         )
         if ended:
             self._effects.particles.explosion(centre_x, centre_y, (NEON_RED,), 26, (50.0, 160.0))
@@ -455,9 +471,29 @@ class Game:
         if is_boss:
             self._audio.play(SFX_BOSS)
 
+        self._grant_arcade_time(centre_x, centre_y, is_boss)
+
         milestone = self._state.take_combo_milestone()
         if milestone:
             self._celebrate_combo(milestone)
+
+    def _grant_arcade_time(self, centre_x: float, centre_y: float, is_boss: bool) -> None:
+        """Arcade's whole economy: every kill buys seconds back on the clock.
+
+        Shown as its own popup under the score label so the reward reads as
+        time, not points. The clock itself is capped so a long chain can't
+        run the display out of range; the *score* has no such ceiling.
+        """
+        if self._state.mode != MODE_ARCADE:
+            return
+        bonus = ARCADE_BOSS_SECONDS if is_boss else ARCADE_KILL_SECONDS
+        self._arcade_remaining = min(
+            ARCADE_SECONDS * 4.0, self._arcade_remaining + bonus
+        )
+        self._effects.popups.add(
+            f"+{bonus:g}s", centre_x, centre_y + self._ui.px(20),
+            NEON_YELLOW, 1.2,
+        )
 
     def _celebrate_combo(self, milestone: int) -> None:
         x, y = self._ui.width / 2, self._danger_line * 0.42
@@ -492,6 +528,19 @@ class Game:
 
         Flagged as a victory so the summary reads as a clean completion, but
         warmup is never recorded on the leaderboard.
+        """
+        self._finished = True
+        self._victory = True
+        self._message = "TIME UP"
+        self._message_timer = 999.0
+        self._audio.play(SFX_WAVE_CLEAR)
+
+    def _finish_arcade(self) -> None:
+        """The arcade clock ran out: the score attack is over.
+
+        Also flagged as a victory — running out of clock is how a *good*
+        arcade run ends, not a failure — but unlike warmup this run is
+        recorded on the arcade board by the game-over screen.
         """
         self._finished = True
         self._victory = True
@@ -661,7 +710,8 @@ class Game:
             )
 
     def _hud_vitals(self) -> list[tuple[str, str, tuple[int, int, int]]]:
-        """The right-hand HUD tiles. Endless and warmup have no lives."""
+        """The right-hand HUD tiles. Endless and warmup have no lives; arcade
+        trades the lives tile for the countdown clock that ends its runs."""
         vitals = [
             ("WPM", f"{self._state.current_wpm:.0f}", TEXT_BRIGHT),
             ("ACCURACY", f"{self._state.accuracy:.1f}%", TEXT_BRIGHT),
@@ -669,6 +719,10 @@ class Game:
         if self._state.mode == MODE_WARMUP:
             vitals.append(
                 ("TIME", f"{math.ceil(self._warmup_remaining)}s", NEON_YELLOW)
+            )
+        elif self._state.mode == MODE_ARCADE:
+            vitals.append(
+                ("TIME", f"{math.ceil(self._arcade_remaining)}s", NEON_YELLOW)
             )
         elif self._state.mode != MODE_ENDLESS:
             vitals.append(("LIVES", "♥" * self._state.player.lives, NEON_PINK))

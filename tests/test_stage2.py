@@ -306,6 +306,13 @@ class WaveManagerTests(unittest.TestCase):
         for _ in range(30):
             self.assertTrue(manager.advance(0))
 
+    def test_arcade_is_unbounded_and_names_the_mode(self) -> None:
+        manager = WaveManager(self.content, "arcade")
+        self.assertFalse(manager.is_campaign)
+        self.assertIn("ARCADE", manager.language_name)
+        for _ in range(30):
+            self.assertTrue(manager.advance(0))
+
     def test_endless_rolls_a_fresh_language_each_wave(self) -> None:
         # The old bug froze generated waves on the ladder's first language (HTML).
         # Over sixty waves a ten-language pool will not come up identical.
@@ -551,7 +558,7 @@ class ShellScreenTests(unittest.TestCase):
         self.assertEqual(self.audio.volume_updates, 1)
 
     def test_main_menu_exit_returns_to_application_loop(self) -> None:
-        from screens.main_menu import MainMenuScreen
+        from screens.main_menu import MainMenuScreen, _MENU_ITEMS
 
         view = MainMenuScreen(
             self.screen,
@@ -561,7 +568,9 @@ class ShellScreenTests(unittest.TestCase):
             self.leaderboard,
         )
         pygame.event.clear()
-        for _ in range(6):
+        # Walk down to the EXIT row whatever the menu's length is; counting a
+        # literal would break every time a mode is added.
+        for _ in range(len(_MENU_ITEMS) - 1):
             pygame.event.post(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_DOWN, unicode=""))
         pygame.event.post(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_RETURN, unicode="\r"))
 

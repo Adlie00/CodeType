@@ -15,6 +15,7 @@ from game.constants import (
     DIFFICULTY_EXPERT,
     DIFFICULTY_ORDER,
     HAIRLINE_DIM,
+    MODE_ARCADE,
     MODE_CAMPAIGN,
     MODE_COMPETITION,
     MODE_ENDLESS,
@@ -22,6 +23,7 @@ from game.constants import (
     NEON_CYAN,
     NEON_GREEN,
     NEON_ORANGE,
+    NEON_PINK,
     NEON_RED,
     NEON_YELLOW,
     PANEL_BG,
@@ -39,6 +41,7 @@ from game.ui import UI, Stage, pulse
 _MENU_ITEMS = [
     ("CAMPAIGN",    MODE_CAMPAIGN,    "10 waves · clear them all"),
     ("ENDLESS",     MODE_ENDLESS,     "boss every 20 kills"),
+    ("ARCADE",      MODE_ARCADE,      "2 min · kills add time"),
     ("COMPETITION", MODE_COMPETITION, "scored on its own board"),
     ("WARMUP",      MODE_WARMUP,      "30s practice · not scored"),
     ("LEADERBOARD", "leaderboard",    "local high scores"),
@@ -51,6 +54,7 @@ _EXIT_REQUESTED = object()
 _ITEM_COLOURS = (
     NEON_CYAN,
     NEON_GREEN,
+    NEON_PINK,
     NEON_YELLOW,
     NEON_ORANGE,
     NEON_CYAN,
@@ -174,7 +178,13 @@ class MainMenuScreen:
                 self._screen, self._settings, self._assets,
                 self._audio, self._leaderboard,
             )
-        if action in (MODE_CAMPAIGN, MODE_ENDLESS, MODE_COMPETITION, MODE_WARMUP):
+        if action in (
+            MODE_CAMPAIGN,
+            MODE_ENDLESS,
+            MODE_ARCADE,
+            MODE_COMPETITION,
+            MODE_WARMUP,
+        ):
             difficulty = DIFFICULTY_ORDER[self._diff_index]
             if action == MODE_COMPETITION:
                 from screens.name_input_screen import NameInputScreen

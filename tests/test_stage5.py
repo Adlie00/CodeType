@@ -1774,6 +1774,172 @@ class WarmupModeTests(unittest.TestCase):
         self.assertIsNone(view._rank)
 
 
+class ArcadeModeTests(unittest.TestCase):
+    """Arcade is the timed score attack: 120s, no lives, kills buy seconds."""
+
+    class FakeAssets:
+        def font(self, size, bold=False):
+            return pygame.font.Font(None, max(8, size))
+
+    class FakeAudio:
+        def play(self, slot):
+            pass
+
+        def update_volumes(self):
+            pass
+
+    class FakeSettings:
+        width = 1280
+        height = 720
+        fullscreen = False
+        master_volume = 0.8
+        music_volume = 0.5
+        sfx_volume = 0.8
+        typing_effects = True
+        screen_shake = False
+
+        def save(self):
+            pass
+
+    class Clock:
+        def tick(self, fps):
+            return 16
+
+    class RecordingBoard:
+        def __init__(self):
+            self.saved = []
+
+        def save_score(self, **kwargs):
+            self.saved.append(kwargs)
+            return True
+
+    def _game(self, mode="arcade", name="ACE"):
+        from game.game import Game
+
+        screen = pygame.display.set_mode((1280, 720))
+        return Game(
+            screen=screen, settings=self.FakeSettings(), assets=self.FakeAssets(),
+            audio=self.FakeAudio(), mode=mode, player_name=name,
+        )
+
+    @staticmethod
+    def _escaped():
+        import types
+
+        return types.SimpleNamespace(x=10.0, width=20.0, y=100.0)
+
+    def test_arcade_omits_lives_and_shows_the_clock(self) -> None:
+        labels = [v[0] for v in self._game()._hud_vitals()]
+        self.assertIn("TIME", labels)
+        self.assertNotIn("LIVES", labels)
+
+    def test_arcade_escapes_never_cost_a_life_or_end_the_run(self) -> None:
+        game = self._game()
+        starting = game._state.player.lives
+        for _ in range(starting + 5):
+            game._on_enemy_escaped(self._escaped())
+        self.assertEqual(game._state.player.lives, starting)
+        self.assertFalse(game.finished, "an arcade run must never end on a miss")
+
+    def test_the_clock_running_out_finishes_the_run_as_a_victory(self) -> None:
+        game = self._game()
+        self.assertFalse(game.finished)
+        game._arcade_remaining = 0.05
+        game.update(0.1)
+        self.assertTrue(game.finished)
+        self.assertTrue(game._victory)
+
+    def test_kills_buy_seconds_and_bosses_buy_more(self) -> None:
+        game = self._game()
+        before = game._arcade_remaining
+        game._grant_arcade_time(100.0, 100.0, is_boss=False)
+        self.assertAlmostEqual(game._arcade_remaining, before + 2.0)
+        game._grant_arcade_time(100.0, 100.0, is_boss=True)
+        self.assertAlmostEqual(game._arcade_remaining, before + 10.0)
+
+    def test_the_bonus_caps_the_clock_so_it_cannot_run_away(self) -> None:
+        from game.constants import ARCADE_SECONDS
+
+        game = self._game()
+        game._arcade_remaining = ARCADE_SECONDS * 4.0
+        game._grant_arcade_time(100.0, 100.0, is_boss=True)
+        self.assertEqual(game._arcade_remaining, ARCADE_SECONDS * 4.0)
+
+    def test_other_modes_get_no_arcade_clock_or_bonus(self) -> None:
+        endless = self._game("endless")
+        self.assertEqual(endless._arcade_remaining, 0.0)
+        endless._grant_arcade_time(100.0, 100.0, is_boss=False)
+        self.assertEqual(endless._arcade_remaining, 0.0)
+
+    def test_arcade_plays_the_endless_family_waves_named_arcade(self) -> None:
+        game = self._game()
+        manager = game._wave_manager
+        self.assertFalse(manager.is_campaign)
+        self.assertIn("ARCADE", manager.language_name)
+        ladder = {wave.language for wave in manager._campaign_waves}
+        self.assertIn(manager.current_wave.language, ladder)
+
+    def test_the_menu_offers_arcade_and_starts_it_directly(self) -> None:
+        from game.constants import MODE_ARCADE
+        from screens.game_screen import GameScreen
+        from screens.main_menu import MainMenuScreen, _MENU_ITEMS
+
+        labels = [item[0] for item in _MENU_ITEMS]
+        self.assertIn("ARCADE", labels)
+
+        screen = pygame.display.set_mode((1280, 720))
+        menu = MainMenuScreen(
+            screen, self.FakeSettings(), self.FakeAssets(), self.FakeAudio(),
+            None,
+        )
+        result = menu._activate(MODE_ARCADE)
+        self.assertIsInstance(result, GameScreen)
+        self.assertEqual(result._mode, "arcade")
+
+    def test_the_arcade_summary_is_saved(self) -> None:
+        from screens.game_over_screen import GameOverScreen
+
+        screen = pygame.display.set_mode((1280, 720))
+        board = self.RecordingBoard()
+        stats = {
+            "player_name": "ACE", "mode": "arcade", "score": 5678, "wpm": 88.1,
+            "accuracy": 96.4, "max_combo": 21, "best_wpm": 99.0, "waves": 6,
+            "enemies": 44, "bosses": 2, "victory": True,
+            "start_difficulty": "medium",
+        }
+        view = GameOverScreen(
+            screen, self.FakeSettings(), self.FakeAssets(), self.FakeAudio(),
+            board, stats,
+        )
+        self.assertEqual(len(board.saved), 1, "an arcade run must be recorded")
+        self.assertEqual(board.saved[0]["mode"], "arcade")
+        self.assertEqual(view._save_status, "saved")
+
+    def test_quitting_arcade_banks_the_run(self) -> None:
+        from screens.game_screen import GameScreen
+        from screens.main_menu import MainMenuScreen
+
+        screen = pygame.display.set_mode((1280, 720))
+        board = self.RecordingBoard()
+        view = GameScreen(
+            screen, self.FakeSettings(), self.FakeAssets(), self.FakeAudio(),
+            board, "arcade", "ACE",
+        )
+        pygame.event.clear()
+        view._game._return_to_menu = True
+        result = view.run(self.Clock())
+        self.assertIsInstance(result, MainMenuScreen)
+        self.assertEqual(len(board.saved), 1, "quitting arcade must bank the run")
+
+    def test_the_clock_runs_down_in_real_time(self) -> None:
+        from game.constants import ARCADE_SECONDS
+
+        game = self._game()
+        self.assertEqual(game._arcade_remaining, ARCADE_SECONDS)
+        game.update(1.5)
+        self.assertAlmostEqual(game._arcade_remaining, ARCADE_SECONDS - 1.5)
+
+
 class ScreenStateTests(unittest.TestCase):
     """State that must survive a rebuild, because a resize triggers one."""
 

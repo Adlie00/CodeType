@@ -11,6 +11,7 @@ from game.constants import (
     HAIRLINE_DIM,
     NEON_CYAN,
     NEON_GREEN,
+    NEON_PINK,
     NEON_RED,
     NEON_YELLOW,
     PANEL_BG,
@@ -20,7 +21,12 @@ from game.constants import (
     TEXT_BRIGHT,
     TEXT_DIM,
 )
-from game.constants import MODE_CAMPAIGN, MODE_ENDLESS, MODE_COMPETITION
+from game.constants import (
+    MODE_ARCADE,
+    MODE_CAMPAIGN,
+    MODE_COMPETITION,
+    MODE_ENDLESS,
+)
 from game.display import toggle_fullscreen
 from game.ui import UI, Stage, pulse
 
@@ -38,15 +44,19 @@ _COLUMNS = (
 )
 
 # Colour per mode for the mode label cells; dim fallback for unknowns.
+# Arcade borrows the pink its menu row uses.
 _MODE_COLOURS = {
     MODE_CAMPAIGN:    NEON_CYAN,
     MODE_ENDLESS:     NEON_GREEN,
+    MODE_ARCADE:      NEON_PINK,
     MODE_COMPETITION: NEON_YELLOW,
 }
 
 # None means "no filter" (show all).
-_FILTER_OPTIONS = (None, MODE_CAMPAIGN, MODE_ENDLESS, MODE_COMPETITION)
-_FILTER_LABELS  = ("ALL", "CAMPAIGN", "ENDLESS", "COMPETITION")
+_FILTER_OPTIONS = (
+    None, MODE_CAMPAIGN, MODE_ENDLESS, MODE_ARCADE, MODE_COMPETITION
+)
+_FILTER_LABELS  = ("ALL", "CAMPAIGN", "ENDLESS", "ARCADE", "COMPETITION")
 
 
 class LeaderboardScreen:

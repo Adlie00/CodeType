@@ -13,6 +13,7 @@ import pygame
 
 from game.constants import (
     HAIRLINE_DIM,
+    MODE_ARCADE,
     MODE_ENDLESS,
     NEON_RED,
     TARGET_FPS,
@@ -116,9 +117,10 @@ class GameScreen:
                 self._game.update(dt)
                 self._game.draw(self._screen)
                 if self._game.return_to_menu:
-                    if self._mode == MODE_ENDLESS:
-                        # Endless never ends on its own, so quitting is the only
-                        # way to bank a run: record it before heading back.
+                    if self._mode in (MODE_ENDLESS, MODE_ARCADE):
+                        # Neither endless nor arcade ever ends on its own short
+                        # of the clock, so quitting is the only way to bank an
+                        # unfinished run: record it before heading back.
                         self._save_run()
                     return self._to_menu()
                 if self._game.finished:
