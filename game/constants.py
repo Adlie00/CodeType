@@ -269,6 +269,8 @@ MAX_LIVES      = 5
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
 import os
+import sys
+
 BASE_DIR       = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR       = os.path.join(BASE_DIR, "data")
 LANGUAGES_DIR  = os.path.join(DATA_DIR, "languages")
@@ -276,7 +278,24 @@ ASSETS_DIR     = os.path.join(BASE_DIR, "assets")
 FONTS_DIR      = os.path.join(ASSETS_DIR, "fonts")
 SOUNDS_DIR     = os.path.join(ASSETS_DIR, "sounds")
 IMAGES_DIR     = os.path.join(ASSETS_DIR, "images")
-DATABASE_DIR   = os.path.join(BASE_DIR, "database")
-SETTINGS_FILE  = os.path.join(DATA_DIR, "settings.json")
 WAVES_FILE     = os.path.join(DATA_DIR, "waves.json")
+
+# Bundled content (languages, assets, waves) lives beside the code in every
+# build. The two *writable* files — settings and the leaderboard — do not:
+# inside a frozen build BASE_DIR is PyInstaller's _internal folder, which lives
+# inside the game directory. Writing there breaks the moment a player installs
+# to Program Files (UAC blocks it silently) and loses the leaderboard whenever
+# the game folder is replaced by an update. So in a frozen build they move to
+# %APPDATA%\CODETYPE, which is writable and survives updates. Running from
+# source keeps the old layout, so development is unchanged.
+if getattr(sys, "frozen", False):
+    SAVE_DIR = os.path.join(
+        os.environ.get("APPDATA", os.path.expanduser("~")), "CODETYPE"
+    )
+    DATABASE_DIR  = os.path.join(SAVE_DIR, "database")
+    SETTINGS_FILE = os.path.join(SAVE_DIR, "settings.json")
+else:
+    DATABASE_DIR  = os.path.join(BASE_DIR, "database")
+    SETTINGS_FILE = os.path.join(DATA_DIR, "settings.json")
+
 DB_FILE        = os.path.join(DATABASE_DIR, "codetype.db")

@@ -318,8 +318,17 @@ build.bat
 ```
 
 Runs PyInstaller in `--onedir` mode and writes `dist\CODETYPE\CODETYPE.exe`.
-It bundles `data/`, `assets/`, and `database/`, and uses
-`assets/images/icon.ico`.
+**The output is a folder, not a single file — ship the whole `dist\CODETYPE\`
+folder**, since the exe needs the `_internal\` directory beside it (Python
+runtime, pygame, and the bundled `data/` and `assets/`).
+
+The leaderboard database is deliberately *not* bundled: the game creates a
+fresh one on first run. In a built game, the two writable files —
+`settings.json` and `codetype.db` — live in `%APPDATA%\CODETYPE\`, not inside
+the game folder. That keeps scores safe when a player updates by replacing the
+folder, and avoids silent save failures under `Program Files` (UAC blocks
+writes there). Running from source keeps the old in-repo paths, so development
+is unchanged.
 
 The icon is generated, not hand-drawn:
 

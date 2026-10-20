@@ -1,7 +1,9 @@
 """Top-10 acceptance rules for the persistent leaderboard."""
 
+import importlib
 import os
 import sqlite3
+import sys
 import tempfile
 import unittest
 from unittest import mock
@@ -132,6 +134,73 @@ class LeaderboardTopTenTests(unittest.TestCase):
         rows = board.get_top(TOP_LIMIT)
         self.assertEqual(len(rows), TOP_LIMIT)
         self.assertEqual(min(row["score"] for row in rows), 16)
+
+
+class FrozenSavePathTests(unittest.TestCase):
+    """A frozen build must save outside its own folder.
+
+    PyInstaller extracts to (and, in onedir, ships from) a directory that an
+    update replaces wholesale and that UAC may make read-only. Settings and the
+    leaderboard therefore belong in %APPDATA% when frozen; running from source
+    keeps the old repo-relative layout so development is unchanged.
+    """
+
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        # reload() re-executes in the same module object, so this *is the* live
+        # game.constants: restoring it in a cleanup keeps every later import in
+        # the suite seeing the source-run paths.
+        import game.constants as constants
+
+        self._constants = constants
+        self.addCleanup(importlib.reload, constants)
+
+    def _reload(self, frozen: bool, environ: dict):
+        with mock.patch.dict(os.environ, environ, clear=True), \
+             mock.patch.object(sys, "frozen", frozen, create=True):
+            importlib.reload(self._constants)
+
+    def test_a_frozen_build_saves_under_appdata(self) -> None:
+        self._reload(True, {"APPDATA": self._tmp.name})
+        save_dir = os.path.join(self._tmp.name, "CODETYPE")
+        self.assertEqual(
+            self._constants.SETTINGS_FILE, os.path.join(save_dir, "settings.json")
+        )
+        self.assertEqual(
+            self._constants.DATABASE_DIR, os.path.join(save_dir, "database")
+        )
+        self.assertEqual(
+            self._constants.DB_FILE,
+            os.path.join(save_dir, "database", "codetype.db"),
+        )
+
+    def test_a_frozen_build_without_appdata_falls_back_to_the_home_dir(self) -> None:
+        home = os.path.join(self._tmp.name, "home")
+        with mock.patch("os.path.expanduser", return_value=home):
+            self._reload(True, {})
+        self.assertTrue(
+            self._constants.SETTINGS_FILE.startswith(
+                os.path.join(home, "CODETYPE")
+            )
+        )
+
+    def test_running_from_source_keeps_the_repo_layout(self) -> None:
+        self._reload(False, {"APPDATA": self._tmp.name})
+        base = os.path.dirname(os.path.dirname(os.path.abspath(
+            self._constants.__file__
+        )))
+        self.assertEqual(
+            self._constants.SETTINGS_FILE, os.path.join(base, "data", "settings.json")
+        )
+        self.assertEqual(
+            self._constants.DATABASE_DIR, os.path.join(base, "database")
+        )
+        # Bundled read-only content never moves, frozen or not: the exe must
+        # always find its languages next to the code.
+        self.assertEqual(
+            self._constants.WAVES_FILE, os.path.join(base, "data", "waves.json")
+        )
 
 
 if __name__ == "__main__":
