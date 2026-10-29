@@ -42,7 +42,7 @@ _MENU_ITEMS = [
     ("CAMPAIGN",    MODE_CAMPAIGN,    "10 waves · clear them all"),
     ("ENDLESS",     MODE_ENDLESS,     "boss every 20 kills"),
     ("ARCADE",      MODE_ARCADE,      "2 min · kills add time"),
-    ("COMPETITION", MODE_COMPETITION, "scored on its own board"),
+    ("COMPETITION", MODE_COMPETITION, "5 waves · team tournament"),
     ("WARMUP",      MODE_WARMUP,      "30s practice · not scored"),
     ("LEADERBOARD", "leaderboard",    "local high scores"),
     ("SETTINGS",    "settings",       "resolution, audio, effects"),
@@ -243,6 +243,12 @@ class MainMenuScreen:
         ui.divider(self._screen, cx - half, cx + half, rule_y, HAIRLINE_DIM)
         core   = max(ui.px(40), int(half * 0.28))
         ui.divider(self._screen, cx - core, cx + core, rule_y, NEON_CYAN, 240)
+        ui.diamond(self._screen, cx - half - ui.px(8), rule_y, NEON_CYAN)
+        ui.diamond(self._screen, cx + half + ui.px(8), rule_y, NEON_CYAN)
+        # A bright spark travels along the rule so the title block feels alive.
+        travel = (self._tick * 0.35) % 1.0
+        spark_x = int(cx - half + (2 * half) * travel)
+        ui.divider(self._screen, spark_x - ui.px(18), spark_x + ui.px(18), rule_y, TEXT_BRIGHT, 200)
         caption = ui.text(
             self._screen,
             "PROGRAMMING TYPING GAME",
@@ -294,14 +300,21 @@ class MainMenuScreen:
             # Shortcut digit — top-left corner
             text_col = colour if is_active else TEXT_DIM
             ui.text(
-                self._screen, str(i + 1), 8, text_col,
-                btn.x + ui.px(5), btn.y + ui.px(4), anchor="topleft",
+                self._screen, str(i + 1), 10, text_col,
+                btn.x + ui.px(6), btn.centery, anchor="midleft",
             )
             # Difficulty label — centred in the button
             ui.text(
-                self._screen, diff, 11, text_col,
-                btn.centerx, btn.centery, bold=True, anchor="center",
+                self._screen, diff, 12, text_col,
+                btn.centerx + ui.px(6), btn.centery, bold=True, anchor="center",
             )
+            if is_active:
+                pygame.draw.rect(
+                    self._screen, colour,
+                    pygame.Rect(btn.x + ui.px(6), btn.bottom - ui.px(3),
+                                btn.width - ui.px(12), max(2, ui.px(2))),
+                    border_radius=1,
+                )
 
     # ── Menu panel ────────────────────────────────────────────────────────────
 
@@ -393,18 +406,27 @@ class MainMenuScreen:
                     intensity=self._warmth[i],
                 )
 
-            # Arrow: ">>" when selected, blank otherwise
-            arrow_str = ">>" if selected else "  "
-            ui.text(
-                self._screen, arrow_str, 13, colour,
-                row.x + ui.px(4), row.centery,
-                bold=True, anchor="midleft",
-            )
+            warm = self._warmth[i]
 
-            # Mode label — left-aligned inside the label column, after the arrow
+            # Faint separator under every row but the last, and not beside the
+            # selected one, whose wash already marks its edges.
+            if i < count - 1 and not selected and self._selected != i + 1:
+                ui.divider(
+                    self._screen, row.x + arrow_w, row.right - ui.px(6),
+                    row.bottom + gap // 2, HAIRLINE_DIM, 90,
+                )
+
+            # Chevron eases in and out with the selection.
+            if warm > 0.05:
+                ui.chevron(
+                    self._screen, row.x + ui.px(10) + int(ui.px(4) * warm),
+                    row.centery, colour, size=5,
+                )
+
+            # Mode label — nudged right as the row warms up.
             ui.text(
                 self._screen, label, 22, colour,
-                row.x + arrow_w, row.centery,
+                row.x + arrow_w + int(ui.px(6) * warm), row.centery,
                 bold=True, anchor="midleft",
             )
 

@@ -102,7 +102,7 @@ triggering a flash. Boss kills are worth 3× score.
 | **Campaign** | The 10-wave ladder below. Clearing wave 10 wins the run. |
 | **Endless** | Procedurally generated waves that keep getting faster (spawn interval decays from 4.0s toward a 1.0s floor), drawing a random language each wave. A boss appears every 20 kills. Survive as long as you can. |
 | **Arcade** | A 2-minute score attack on the endless wave schedule. No lives — the clock is the only thing that ends the run — and every kill buys seconds back (+2s, +8s for a boss) so a fast chain can stretch a 120s run much longer. Recorded on its own leaderboard board. |
-| **Competition** | A five-team, five-representative tournament. Each representative plays one official run; a team's total unlocks when all five finish, and those totals drive a double-elimination bracket with its own Team to Beat and leaderboard view. |
+| **Competition** | A five-team, five-representative tournament. Each representative plays one official five-wave run; a team's total unlocks when all five finish, and those totals drive a double-elimination bracket with its own Team to Beat and leaderboard view. |
 | **Warmup** | A 30-second, unscored practice run with no lives, drawing a random language each wave. When the clock runs out it shows a summary; runs are never recorded on the leaderboard. |
 
 ## The campaign ladder

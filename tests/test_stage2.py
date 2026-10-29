@@ -293,11 +293,15 @@ class WaveManagerTests(unittest.TestCase):
         self.assertEqual(len(spawned), 1)
         self.assertEqual(spawned[0].difficulty, "EASY")
 
-    def test_competition_plays_the_campaign(self) -> None:
+    def test_competition_uses_a_five_wave_ladder(self) -> None:
         manager = WaveManager(self.content, "competition")
         self.assertTrue(manager.is_campaign)
-        self.assertEqual(manager.total_waves, 10)
+        self.assertEqual(manager.total_waves, 5)
         self.assertEqual(manager.language_name, "HTML")
+        for _ in range(4):
+            self.assertTrue(manager.advance(0))
+        self.assertEqual(manager.wave_number, 5)
+        self.assertFalse(manager.advance(0), "competition stops after five waves")
 
     def test_endless_is_unbounded_and_names_the_mode(self) -> None:
         manager = WaveManager(self.content, "endless")

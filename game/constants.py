@@ -211,6 +211,9 @@ WARMUP_SECONDS   = 30.0
 ARCADE_SECONDS     = 120.0
 ARCADE_KILL_SECONDS = 2.0
 ARCADE_BOSS_SECONDS = 8.0
+# Competition runs a shorter ladder than the ten-wave campaign: five waves fit
+# one representative attempt inside a tournament round.
+COMPETITION_WAVE_COUNT = 5
 
 # ── Scoring ───────────────────────────────────────────────────────────────────
 #   total = (base + wave + speed + accuracy) x difficulty x combo x boss

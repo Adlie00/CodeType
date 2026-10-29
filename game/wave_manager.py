@@ -7,6 +7,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 
 from game.constants import (
+    COMPETITION_WAVE_COUNT,
     DIFFICULTY_BOSS,
     DIFFICULTY_ORDER,
     ENEMY_BOSS,
@@ -70,6 +71,9 @@ class WaveManager:
         # Competition plays the campaign; only endless is unbounded.
         self._is_campaign = mode in (MODE_CAMPAIGN, MODE_COMPETITION)
         self._campaign_waves = content.available_waves
+        if mode == MODE_COMPETITION:
+            # A tournament attempt is a five-wave run, not the full campaign.
+            self._campaign_waves = self._campaign_waves[:COMPETITION_WAVE_COUNT]
         if not self._campaign_waves:
             raise ContentError("No complete campaign wave data is available")
         # Endless-family waves are generated, so they roll a fresh language every

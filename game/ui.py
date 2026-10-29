@@ -299,6 +299,8 @@ class UI:
             self.divider(
                 surface, centre_x - bright, centre_x + bright, y, glow or NEON_CYAN, 235
             )
+            self.diamond(surface, centre_x - half - self.px(8), y, glow or NEON_CYAN)
+            self.diamond(surface, centre_x + half + self.px(8), y, glow or NEON_CYAN)
         if subtitle:
             self.text(
                 surface,
@@ -603,14 +605,7 @@ class UI:
         radius = max(0, min(radius, min(rect.width, rect.height) // 2))
 
         if glow > 0.0 and border is not None:
-            halo = rect.inflate(self.px(12), self.px(12))
-            halo_surface = pygame.Surface(halo.size, pygame.SRCALPHA)
-            halo_surface.fill((*border, int(min(90, 26 * glow))))
-            surface.blit(
-                halo_surface,
-                halo.topleft,
-                special_flags=pygame.BLEND_RGBA_ADD,
-            )
+            self.soft_glow(surface, rect, border, glow, radius)
 
         body = pygame.Surface(rect.size, pygame.SRCALPHA)
         body.fill((*fill, alpha))
@@ -620,6 +615,46 @@ class UI:
         if accent is not None:
             self._corner_accent(surface, rect, accent, radius)
         return rect
+
+    def soft_glow(
+        self,
+        surface: pygame.Surface,
+        rect: pygame.Rect,
+        colour: tuple[int, int, int],
+        strength: float = 1.0,
+        radius: int | None = None,
+        *,
+        spread: int = 14,
+        layers: int = 6,
+    ) -> None:
+        """A feathered neon halo around ``rect``, drawn *behind* whatever follows.
+
+        Concentric rounded rects are accumulated with ``BLEND_RGB_ADD`` on an
+        opaque black layer, each pre-scaled by its own intensity. Scaling the
+        colour (rather than relying on alpha) is what makes it additive-safe:
+        ADD ignores alpha, so an alpha-tinted fill would add the full colour.
+        """
+        PEAK = 0.17
+        radius = self.px(10) if radius is None else radius
+        reach = max(2, self.px(spread))
+        halo = rect.inflate(reach * 2, reach * 2)
+        layer = pygame.Surface(halo.size)
+        layer.fill((0, 0, 0))
+        strength = max(0.0, min(2.0, strength))
+        for index in range(layers):
+            fraction = index / max(1, layers - 1)      # 0 = outer, 1 = inner
+            inset = int(reach * (1.0 - fraction))
+            # Increments sum to PEAK at the card's edge and ramp up towards it,
+            # so the outer rings are barely there and the glow feathers out.
+            level = PEAK * strength * 2.0 * (index + 1) / (layers * (layers + 1))
+            tint = tuple(int(min(255, channel * level)) for channel in colour)
+            area = pygame.Rect(inset, inset, halo.width - inset * 2, halo.height - inset * 2)
+            if area.width <= 0 or area.height <= 0:
+                continue
+            pygame.draw.rect(
+                layer, tint, area, border_radius=max(0, radius + reach - inset)
+            )
+        surface.blit(layer, halo.topleft, special_flags=pygame.BLEND_RGB_ADD)
 
     def _corner_accent(
         self,
@@ -664,6 +699,56 @@ class UI:
         line = pygame.Surface((max(1, x2 - x1), 1), pygame.SRCALPHA)
         line.fill((*colour, alpha))
         surface.blit(line, (x1, y))
+
+    def diamond(
+        self,
+        surface: pygame.Surface,
+        x: int,
+        y: int,
+        colour: tuple[int, int, int] = NEON_CYAN,
+        size: int = 4,
+    ) -> None:
+        """A small filled lozenge, used to cap rules and mark selections."""
+        r = max(2, self.px(size))
+        pygame.draw.polygon(
+            surface, colour, [(x, y - r), (x + r, y), (x, y + r), (x - r, y)]
+        )
+
+    def chevron(
+        self,
+        surface: pygame.Surface,
+        x: int,
+        y: int,
+        colour: tuple[int, int, int] = NEON_CYAN,
+        size: int = 6,
+    ) -> None:
+        """A right-pointing filled triangle, vertically centred on ``y``."""
+        r = max(3, self.px(size))
+        pygame.draw.polygon(
+            surface, colour, [(x, y - r), (x + r, y), (x, y + r)]
+        )
+
+    def vertical_gradient(
+        self,
+        surface: pygame.Surface,
+        rect: pygame.Rect,
+        colour: tuple[int, int, int],
+        top_alpha: int,
+        bottom_alpha: int,
+    ) -> None:
+        """Alpha ramp from ``top_alpha`` to ``bottom_alpha`` across ``rect``."""
+        if rect.width <= 0 or rect.height <= 0:
+            return
+        key = ("vgrad", rect.width, rect.height, colour, top_alpha, bottom_alpha)
+        cached = self._overlays.get(key)  # type: ignore[arg-type]
+        if cached is None:
+            cached = pygame.Surface(rect.size, pygame.SRCALPHA)
+            for row in range(rect.height):
+                fraction = row / max(1, rect.height - 1)
+                alpha = int(top_alpha + (bottom_alpha - top_alpha) * fraction)
+                pygame.draw.line(cached, (*colour, alpha), (0, row), (rect.width, row))
+            self._overlays[key] = cached  # type: ignore[index]
+        surface.blit(cached, rect.topleft)
 
     def meter(
         self,
@@ -713,7 +798,7 @@ class UI:
         panel edge instead. Returns the total width drawn.
         """
         size = 13
-        gap = self.px(9)
+        gap = self.px(18)
         pad = self.px(7)
         cap_font = self.font(size, True)
         act_font = self.font(size)
@@ -723,7 +808,8 @@ class UI:
         for key, action in hints:
             key_surf = cap_font.render(key, True, NEON_CYAN)
             act_surf = act_font.render(action, True, colour)
-            block = pad + key_surf.get_width() + pad + act_surf.get_width()
+            # cap (key + 2 pads) + the pad before the label + the label itself
+            block = key_surf.get_width() + pad * 3 + act_surf.get_width()
             measured.append((key_surf, act_surf, block))
             total += block + gap
         total = max(0, total - gap)
@@ -740,7 +826,10 @@ class UI:
             cap_surface = pygame.Surface(cap.size, pygame.SRCALPHA)
             cap_surface.fill((*SURFACE_RAISED, 220))
             surface.blit(cap_surface, cap.topleft)
-            pygame.draw.rect(surface, HAIRLINE, cap, 1, border_radius=4)
+            pygame.draw.rect(surface, HAIRLINE, cap, 1, border_radius=max(4, self.px(5)))
+            pygame.draw.line(
+                surface, (*TEXT_DIM,), (cap.x + 4, cap.y + 1), (cap.right - 5, cap.y + 1), 1
+            )
             surface.blit(key_surf, (cap.x + pad, cap.y + pad // 2))
             surface.blit(act_surf, (cap.right + pad, y - act_surf.get_height() // 2))
             x += block + gap

@@ -612,6 +612,7 @@ class Game:
         surface.fill(DARK_BG)
         self._stage.draw(surface, pygame.time.get_ticks() / 1000.0)
         self._draw_danger_line(surface, width)
+        self._draw_danger_glow(surface, width)
         for enemy in self._enemies:
             self._draw_enemy(surface, enemy)
         self._effects.draw_world(surface, self._ui.font(18, True))
@@ -659,6 +660,27 @@ class Game:
             y - band_height // 2 - ui.px(2), bold=True, anchor="topright",
         )
 
+    def _draw_danger_glow(self, surface: pygame.Surface, width: int) -> None:
+        """Red haze rising off the warning line as a card closes on it.
+
+        Intensity follows the lowest card on the field, so the player feels the
+        pressure before they have to read the line itself.
+        """
+        if not self._enemies:
+            return
+        ui = self._ui
+        line = self._danger_line
+        lowest = max(enemy.y + enemy.height for enemy in self._enemies)
+        reach = max(1.0, self._layout.travel * 0.30)
+        pressure = max(0.0, min(1.0, 1.0 - (line - lowest) / reach))
+        if pressure <= 0.02:
+            return
+        height = ui.px(120)
+        band = pygame.Rect(0, int(line) - height, width, height)
+        ui.vertical_gradient(
+            surface, band, NEON_RED, 0, int(8 + 70 * pressure * pressure)
+        )
+
     def _draw_hud(self, surface: pygame.Surface, width: int) -> None:
         """The top bar: run stats left, wave identity centre, vitals right."""
         ui = self._ui
@@ -690,6 +712,13 @@ class Game:
             surface, combo_rect, "COMBO", f"x{self._state.combo}",
             value_colour=self._combo_colour(), value_size=26,
         )
+
+        # Hairline separators keep the three groups from floating apart.
+        sep_top, sep_bottom = ui.px(14), height - ui.px(16)
+        for sep_x in (int(width * 0.335), int(width * 0.665)):
+            pygame.draw.line(
+                surface, HAIRLINE_DIM, (sep_x, sep_top), (sep_x, sep_bottom), 1
+            )
 
         # Centre: which wave this is and how far through it the player is.
         centre = pygame.Rect(int(width * 0.36), top, int(width * 0.28), tile_height)
@@ -734,7 +763,16 @@ class Game:
                 ("TIME", f"{math.ceil(self._arcade_remaining)}s", NEON_YELLOW)
             )
         elif self._state.mode != MODE_ENDLESS:
-            vitals.append(("LIVES", "♥" * self._state.player.lives, NEON_PINK))
+            lives = self._state.player.lives
+            colour = NEON_PINK
+            if lives <= 1:
+                # The last life throbs red: hard to miss, impossible to read past.
+                beat = 0.5 + 0.5 * math.sin(pygame.time.get_ticks() / 180.0)
+                colour = tuple(
+                    int(NEON_PINK[c] + (NEON_RED[c] - NEON_PINK[c]) * beat)
+                    for c in range(3)
+                )
+            vitals.append(("LIVES", "♥" * lives, colour))
         return vitals
 
     def _competition_bar_rect(self, width: int) -> pygame.Rect | None:
@@ -834,10 +872,19 @@ class Game:
         if is_boss:
             self._draw_boss_aura(surface, rect, border)
 
+        radius = max(4, ui.px(8))
+        if active and not is_boss:
+            ui.soft_glow(surface, rect, border, 1.0, radius, spread=12, layers=5)
+
         fill = (8, 10, 32, 240) if active else (*SURFACE, 226)
         card = pygame.Surface(rect.size, pygame.SRCALPHA)
         card.fill(fill)
-        radius = max(4, ui.px(8))
+        # Tinted header band, clipped to the card's rounded top corners.
+        band = pygame.Rect(0, 0, rect.width, self._layout.enemy_header_height)
+        pygame.draw.rect(
+            card, (*border, 34 if active else 18), band,
+            border_top_left_radius=radius, border_top_right_radius=radius,
+        )
         surface.blit(card, rect.topleft)
         pygame.draw.rect(
             surface, border, rect,
