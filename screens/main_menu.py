@@ -17,9 +17,9 @@ from game.constants import (
     HAIRLINE_DIM,
     MODE_ARCADE,
     MODE_CAMPAIGN,
-    MODE_COMPETITION,
     MODE_ENDLESS,
     MODE_WARMUP,
+    MODE_TOURNAMENT,
     NEON_CYAN,
     NEON_GREEN,
     NEON_ORANGE,
@@ -42,7 +42,7 @@ _MENU_ITEMS = [
     ("CAMPAIGN",    MODE_CAMPAIGN,    "10 waves · clear them all"),
     ("ENDLESS",     MODE_ENDLESS,     "boss every 20 kills"),
     ("ARCADE",      MODE_ARCADE,      "2 min · kills add time"),
-    ("COMPETITION", MODE_COMPETITION, "5 waves · team tournament"),
+    ("TOURNAMENT", MODE_TOURNAMENT, "one attempt · 5x5"),
     ("WARMUP",      MODE_WARMUP,      "30s practice · not scored"),
     ("LEADERBOARD", "leaderboard",    "local high scores"),
     ("SETTINGS",    "settings",       "resolution, audio, effects"),
@@ -182,18 +182,16 @@ class MainMenuScreen:
             MODE_CAMPAIGN,
             MODE_ENDLESS,
             MODE_ARCADE,
-            MODE_COMPETITION,
+            MODE_TOURNAMENT,
             MODE_WARMUP,
         ):
             difficulty = DIFFICULTY_ORDER[self._diff_index]
-            if action == MODE_COMPETITION:
-                # Competition owns a team tournament hub rather than a single
-                # player name: it sets up the five teams and tracks the bracket.
-                from screens.competition_screen import CompetitionScreen
-                return CompetitionScreen(
+            if action == MODE_TOURNAMENT:
+                # Tournament: individual participant attempts
+                from screens.tournament_screen import TournamentScreen
+                return TournamentScreen(
                     self._screen, self._settings, self._assets,
-                    self._audio, self._leaderboard,
-                    difficulty=difficulty,
+                    self._audio, self._leaderboard, difficulty=difficulty,
                 )
             from screens.game_screen import GameScreen
             return GameScreen(

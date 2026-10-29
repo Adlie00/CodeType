@@ -188,31 +188,6 @@ class GameOverScreen:
                         difficulty = str(
                             self._stats.get("start_difficulty", DIFFICULTY_EASY)
                         )
-                        if self._competition is not None:
-                            # Tournament runs go back to the hub, which offers
-                            # the next open representative slot.
-                            from screens.competition_screen import CompetitionScreen
-
-                            return CompetitionScreen(
-                                self._screen,
-                                self._settings,
-                                self._assets,
-                                self._audio,
-                                self._leaderboard,
-                                difficulty=difficulty,
-                            )
-                        if mode == MODE_COMPETITION:
-                            # Legacy hot-seat competition: the next run belongs
-                            # to someone else, so ask for their name first.
-                            return NameInputScreen(
-                                self._screen,
-                                self._settings,
-                                self._assets,
-                                self._audio,
-                                self._leaderboard,
-                                mode,
-                                difficulty=difficulty,
-                            )
                         return GameScreen(
                             self._screen,
                             self._settings,

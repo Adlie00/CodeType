@@ -24,7 +24,6 @@ from game.constants import (
 from game.constants import (
     MODE_ARCADE,
     MODE_CAMPAIGN,
-    MODE_COMPETITION,
     MODE_ENDLESS,
 )
 from game.display import toggle_fullscreen
@@ -49,14 +48,13 @@ _MODE_COLOURS = {
     MODE_CAMPAIGN:    NEON_CYAN,
     MODE_ENDLESS:     NEON_GREEN,
     MODE_ARCADE:      NEON_PINK,
-    MODE_COMPETITION: NEON_YELLOW,
 }
 
 # None means "no filter" (show all).
 _FILTER_OPTIONS = (
-    None, MODE_CAMPAIGN, MODE_ENDLESS, MODE_ARCADE, MODE_COMPETITION
+    None, MODE_CAMPAIGN, MODE_ENDLESS, MODE_ARCADE
 )
-_FILTER_LABELS  = ("ALL", "CAMPAIGN", "ENDLESS", "ARCADE", "COMPETITION")
+_FILTER_LABELS  = ("ALL", "CAMPAIGN", "ENDLESS", "ARCADE")
 
 
 class LeaderboardScreen:
@@ -296,10 +294,6 @@ class LeaderboardScreen:
             return []
         try:
             mode_filter = _FILTER_OPTIONS[self._filter_index]
-            if mode_filter == MODE_COMPETITION:
-                competition_rows = self._competition_rows()
-                if competition_rows is not None:
-                    return competition_rows
             sort_by = self._sort_options[self._sort_index]
             # get_top accepts an optional mode keyword; fall back for older builds.
             if mode_filter is not None and hasattr(self._leaderboard, "get_top"):
@@ -348,10 +342,7 @@ class LeaderboardScreen:
         return rows
 
     def _competition_view(self) -> bool:
-        return (
-            _FILTER_OPTIONS[self._filter_index] == MODE_COMPETITION
-            and any("kind" in row for row in self._rows)
-        )
+        return any("kind" in row for row in self._rows)
 
     def _rows_top(self, table: pygame.Rect) -> int:
         return table.y + self._ui.px(96) + self._ui.px(26) + self._ui.px(26)

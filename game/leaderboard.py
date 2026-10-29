@@ -5,8 +5,8 @@ Leaderboard — SQLite-backed persistent high score table.
 import os
 import sqlite3
 from datetime import datetime
-from game.competition import CompetitionRepository
 from game.constants import DB_FILE, DATABASE_DIR
+from game.tournament import TournamentStore
 
 # The board never holds more than this many scores; anything that falls
 # outside the top 10 is dropped instead of stored.
@@ -18,9 +18,8 @@ class Leaderboard:
         os.makedirs(DATABASE_DIR, exist_ok=True)
         self._conn = sqlite3.connect(DB_FILE)
         self._create_table()
-        # Competition Mode shares this connection: its tournament tables live
-        # beside ``scores``, so there is still exactly one local database.
-        self.competition = CompetitionRepository(self._conn)
+        # The tournament keeps individual official results separately.
+        self.tournament = TournamentStore(self._conn)
         self._trim()
 
     def _create_table(self) -> None:
@@ -120,10 +119,6 @@ class Leaderboard:
     def reset(self) -> None:
         self._conn.execute("DELETE FROM scores")
         self._conn.commit()
-        # The leaderboard reset is the system's one "clear everything" action,
-        # so the competition tournament goes with it rather than being left
-        # pointing at teams the player just erased.
-        self.competition.reset_tournament()
 
     def close(self) -> None:
         self._conn.close()

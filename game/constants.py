@@ -198,6 +198,7 @@ BOSS_PHASE_COLOURS = (NEON_RED, NEON_ORANGE, NEON_YELLOW)
 MODE_CAMPAIGN    = "campaign"
 MODE_ENDLESS     = "endless"
 MODE_COMPETITION = "competition"
+MODE_TOURNAMENT  = "tournament"
 MODE_WARMUP      = "warmup"
 MODE_ARCADE      = "arcade"
 # Warmup is a timed, unscored practice session: no lives, and the clock is the
@@ -302,3 +303,11 @@ else:
     SETTINGS_FILE = os.path.join(DATA_DIR, "settings.json")
 
 DB_FILE        = os.path.join(DATABASE_DIR, "codetype.db")
+# Tournament constants
+TOURNAMENT_NAME = "TOURNAMENT"
+TOURNAMENT_TEAM_COUNT = 5
+TOURNAMENT_PLAYERS_PER_TEAM = 5
+TOURNAMENT_TEAM_NUMBERS = (1, 2, 3, 4, 5)
+TOURNAMENT_PLAYER_NUMBERS = (1, 2, 3, 4, 5)
+TOURNAMENT_DIFFICULTY = DIFFICULTY_EASY
+TOURNAMENT_RESULTS_FILE = os.path.join(DATABASE_DIR, "tournament_results.csv")
