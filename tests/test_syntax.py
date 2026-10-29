@@ -506,10 +506,10 @@ class CardRenderTests(unittest.TestCase):
             short, long,
             f"a short line was set at {short}pt and a long one at {long}pt",
         )
-        self.assertEqual(short, 34, "a short line on a tall card should fill it")
+        self.assertEqual(short, 36, "a short line on a tall card should fill it")
         for size in (short, long):
             self.assertGreaterEqual(size, 13)
-            self.assertLessEqual(size, 34)
+            self.assertLessEqual(size, 36)
 
     def test_the_font_fits_the_height_of_the_card(self) -> None:
         for language, entries in load_snippets().items():

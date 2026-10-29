@@ -42,7 +42,7 @@ _MENU_ITEMS = [
     ("CAMPAIGN",    MODE_CAMPAIGN,    "10 waves · clear them all"),
     ("ENDLESS",     MODE_ENDLESS,     "boss every 20 kills"),
     ("ARCADE",      MODE_ARCADE,      "2 min · kills add time"),
-    ("TOURNAMENT", MODE_TOURNAMENT, "one attempt · 5x5"),
+    ("COMPETITION", MODE_TOURNAMENT, "one attempt · 5x5"),
     ("WARMUP",      MODE_WARMUP,      "30s practice · not scored"),
     ("LEADERBOARD", "leaderboard",    "local high scores"),
     ("SETTINGS",    "settings",       "resolution, audio, effects"),

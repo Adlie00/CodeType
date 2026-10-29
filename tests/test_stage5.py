@@ -1545,6 +1545,46 @@ class CompetitionHotSeatTests(unittest.TestCase):
         self.assertIsInstance(result, GameScreen)
         self.assertEqual(result._player_name, "ACE")
 
+    def test_tournament_summary_uses_competition_label_without_removed_details(self) -> None:
+        from types import SimpleNamespace
+
+        from screens.game_over_screen import GameOverScreen
+
+        class Board:
+            competition = None
+
+            def save_score(self, **kwargs):
+                return True
+
+        screen = pygame.display.set_mode((1280, 720))
+        stats = {
+            "player_name": "ACE", "mode": "tournament", "score": 1234, "wpm": 42.5,
+            "accuracy": 97.5, "max_combo": 12, "best_wpm": 61.0, "waves": 3,
+            "enemies": 7, "bosses": 1, "victory": False,
+        }
+        view = GameOverScreen(
+            screen, self.FakeSettings(), self.FakeAssets(), self.FakeAudio(),
+            Board(), stats,
+            competition=SimpleNamespace(
+                team_name="Team 1", slot=1, attempt_key="attempt-1",
+                target_name="RIVAL", target_score=900,
+            ),
+        )
+        drawn_text = []
+        view._ui.text = lambda _surface, text, *args, **kwargs: drawn_text.append(str(text))
+        view._ui.section_label = (
+            lambda _surface, text, *args, **kwargs: drawn_text.append(str(text))
+        )
+
+        view._draw()
+
+        self.assertIn("ACE   //   COMPETITION", drawn_text)
+        self.assertIn("COMPETITION RESULT", drawn_text)
+        self.assertFalse(any("TOURNAMENT" in text for text in drawn_text))
+        self.assertFalse(any("TEAM TO BEAT" in text for text in drawn_text))
+        self.assertFalse(any("OFFICIAL SCORE NOT SAVED" in text for text in drawn_text))
+        self.assertFalse(any("STORAGE UNAVAILABLE" in text for text in drawn_text))
+
 
 class EndlessNoLivesTests(unittest.TestCase):
     """Endless is endless: escapes never cost a life and never end the run."""

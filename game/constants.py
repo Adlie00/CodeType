@@ -99,7 +99,7 @@ HUD_HEIGHT            = 78
 # margin above the edge so the hazard band is fully visible.
 FIELD_BOTTOM_MARGIN   = 26
 ENEMY_WIDTH           = 390
-ENEMY_MAX_HEIGHT      = 180
+ENEMY_MAX_HEIGHT      = 195
 ENEMY_MAX_LINES       = 6
 ENEMY_MIN_GAP         = 150
 # The field is split into evenly spaced lanes and every spawn takes a random
@@ -107,10 +107,10 @@ ENEMY_MIN_GAP         = 150
 # ENEMY_COLUMN_X stays the leftmost lane.
 ENEMY_COLUMN_X        = 60
 ENEMY_COLUMNS         = 3
-ENEMY_HEADER_HEIGHT   = 31
-ENEMY_LINE_HEIGHT     = 20
+ENEMY_HEADER_HEIGHT   = 33
+ENEMY_LINE_HEIGHT     = 22
 # Strip under the code lines that holds the health meter.
-ENEMY_FOOTER_HEIGHT   = 20
+ENEMY_FOOTER_HEIGHT   = 21
 # Sideways drift amplitudes. A Special sweeps far enough that the target keeps
 # moving under the caret; a Fast just shivers. Both are design-space distances.
 ENEMY_SWAY_SPECIAL    = 46
@@ -304,7 +304,7 @@ else:
 
 DB_FILE        = os.path.join(DATABASE_DIR, "codetype.db")
 # Tournament constants
-TOURNAMENT_NAME = "TOURNAMENT"
+TOURNAMENT_NAME = "COMPETITION"
 TOURNAMENT_TEAM_COUNT = 5
 TOURNAMENT_PLAYERS_PER_TEAM = 5
 TOURNAMENT_TEAM_NUMBERS = (1, 2, 3, 4, 5)

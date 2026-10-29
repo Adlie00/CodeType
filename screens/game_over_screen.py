@@ -11,6 +11,7 @@ from game.constants import (
     HAIRLINE_DIM,
     MODE_ARCADE,
     MODE_COMPETITION,
+    MODE_TOURNAMENT,
     MODE_WARMUP,
     NEON_CYAN,
     NEON_GREEN,
@@ -239,10 +240,9 @@ class GameOverScreen:
             self._screen, title, 40, accent, panel.centerx, panel.y + ui.px(26),
             bold=True, anchor="midtop", glow=accent,
         )
-        subtitle = (
-            f"{self._stats.get('player_name', 'PLAYER')}"
-            f"   //   {str(self._stats.get('mode', '')).upper()}"
-        )
+        mode = str(self._stats.get("mode", ""))
+        mode_label = "COMPETITION" if mode == MODE_TOURNAMENT else mode.upper()
+        subtitle = f"{self._stats.get('player_name', 'PLAYER')}   //   {mode_label}"
         ui.text(
             self._screen, subtitle, 14, TEXT_DIM, panel.centerx, panel.y + ui.px(76),
             anchor="midtop",
@@ -300,15 +300,14 @@ class GameOverScreen:
         return cursor
 
     def _draw_competition_block(self, panel: pygame.Rect, top: int) -> int:
-        """Team progress, Team to Beat and any match this attempt settled."""
+        """Team progress and any match this attempt settled."""
         ui = self._ui
         context = self._competition
         official = self._official
         left = panel.x + ui.px(28)
-        right = panel.right - ui.px(28)
         cursor = top + ui.px(12)
         ui.section_label(
-            self._screen, "TOURNAMENT RESULT", left, cursor
+            self._screen, "COMPETITION RESULT", left, cursor
         )
         cursor += ui.px(20)
         ui.text(
@@ -345,30 +344,8 @@ class GameOverScreen:
                 self._screen, "ALREADY COUNTED — NO DOUBLE SCORING", 13,
                 NEON_ORANGE, left, cursor, bold=True, anchor="topleft",
             )
-        else:
-            ui.text(
-                self._screen,
-                f"OFFICIAL SCORE NOT SAVED  {self._official_error}"[:70],
-                12, NEON_RED, left, cursor, bold=True, anchor="topleft",
-            )
-        cursor += ui.px(20)
-
         if official is not None:
-            leader_name = official.team_to_beat_name or "—"
-            leader_score = official.team_to_beat_score
-        else:
-            leader_name = str(getattr(context, "target_name", "") or "—")
-            leader_score = getattr(context, "target_score", None)
-        leader_score_text = f"{leader_score:,}" if leader_score is not None else "—"
-        ui.text(
-            self._screen, f"TEAM TO BEAT  {leader_name[:20]}", 12, NEON_YELLOW,
-            left, cursor, bold=True, anchor="topleft",
-        )
-        ui.text(
-            self._screen, leader_score_text, 12, NEON_YELLOW,
-            right, cursor, bold=True, anchor="topright",
-        )
-        cursor += ui.px(17)
+            cursor += ui.px(20)
 
         notice = official.notice if official is not None else ""
         if notice:

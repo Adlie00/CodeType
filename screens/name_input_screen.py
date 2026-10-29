@@ -276,7 +276,7 @@ class NameInputScreen:
             self._error = "SELECT PLAYER NUMBER 1-5"
             return None
         if self._tournament is None:
-            self._error = "TOURNAMENT STORAGE UNAVAILABLE"
+            self._error = "COMPETITION STORAGE UNAVAILABLE"
             return None
 
         try:

@@ -76,7 +76,7 @@ _SHAKE_LIFE_LOST = 11.0
 # one. The floor keeps a cramped card legible; the ceiling stops a one-line
 # snippet on a tall card from looking like a headline.
 _CODE_SIZE_MIN = 13
-_CODE_SIZE_MAX = 34
+_CODE_SIZE_MAX = 36
 
 
 class Game:
