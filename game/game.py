@@ -91,12 +91,16 @@ class Game:
         content: ContentRepository | None = None,
         difficulty: str | None = None,
         leaderboard=None,
+        competition=None,
     ) -> None:
         self._screen = screen
         self._settings = settings
         self._assets = assets
         self._audio = audio
         self._leaderboard = leaderboard
+        # Tournament runs carry the slot they belong to; non-tournament
+        # competition runs (and every other mode) leave this as None.
+        self._competition = competition
         self._content = content or ContentRepository()
         self._state = GameState(mode=mode, player_name=player_name)
         # Competition plays against a fixed target: the best score already on
@@ -108,6 +112,11 @@ class Game:
             rival = self._competition_rival()
             if rival is not None:
                 self._rival_name, self._rival_score = rival
+            # A tournament run knows the exact Team to Beat it is chasing, so
+            # the bar shows that instead of querying the generic board.
+            if competition is not None:
+                self._rival_name = getattr(competition, "target_name", "") or None
+                self._rival_score = getattr(competition, "target_score", None)
 
         # Warmup is a timed practice session: no lives, and the clock is the
         # only thing that can end it. At zero the screen drops into competition.
@@ -752,11 +761,25 @@ class Game:
         )
 
         pad = ui.px(22)
-        name = str(self._state.player_name)[:18] or "PLAYER"
-        ui.text(
-            surface, f"PLAYER   {name}", 13, NEON_YELLOW,
-            pad, bar.centery, bold=True, anchor="midleft",
-        )
+        if self._competition is not None:
+            name = str(getattr(self._competition, "team_name", ""))[:18] or "TEAM"
+            slot = getattr(self._competition, "slot", "?")
+            left_label = f"TEAM   {name}   //   REP {slot}"
+            right_label = f"{str(self._state.player_name)[:16]}"
+            ui.text(
+                surface, left_label, 13, NEON_YELLOW,
+                pad, bar.centery, bold=True, anchor="midleft",
+            )
+            ui.text(
+                surface, right_label, 12, TEXT_DIM,
+                pad + ui.px(300), bar.centery, anchor="midleft",
+            )
+        else:
+            name = str(self._state.player_name)[:18] or "PLAYER"
+            ui.text(
+                surface, f"PLAYER   {name}", 13, NEON_YELLOW,
+                pad, bar.centery, bold=True, anchor="midleft",
+            )
         if self._rival_score is not None and self._rival_name:
             # "ALICE TO BEAT   98,450" — the name carries the challenge, the
             # number is what is measured against.

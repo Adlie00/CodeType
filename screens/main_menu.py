@@ -187,10 +187,12 @@ class MainMenuScreen:
         ):
             difficulty = DIFFICULTY_ORDER[self._diff_index]
             if action == MODE_COMPETITION:
-                from screens.name_input_screen import NameInputScreen
-                return NameInputScreen(
+                # Competition owns a team tournament hub rather than a single
+                # player name: it sets up the five teams and tracks the bracket.
+                from screens.competition_screen import CompetitionScreen
+                return CompetitionScreen(
                     self._screen, self._settings, self._assets,
-                    self._audio, self._leaderboard, action,
+                    self._audio, self._leaderboard,
                     difficulty=difficulty,
                 )
             from screens.game_screen import GameScreen

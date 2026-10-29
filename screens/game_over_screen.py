@@ -57,6 +57,7 @@ class GameOverScreen:
         audio,
         leaderboard,
         stats: dict[str, object],
+        competition=None,
     ) -> None:
         self._screen = screen
         self._settings = settings
@@ -64,11 +65,16 @@ class GameOverScreen:
         self._audio = audio
         self._leaderboard = leaderboard
         self._stats = stats
+        self._competition = competition
+        self._official = None
+        self._official_error = ""
         self._tick = 0.0
         self._rebuild(screen)
         # Cache these so _draw_panel doesn't recompute every frame.
         self._victory = bool(stats.get("victory", False))
         self._save_status = self._save_score()
+        if competition is not None:
+            self._official = self._save_official()
         self._rank = self._fetch_rank()
 
     def _rebuild(self, screen: pygame.Surface) -> None:
@@ -98,6 +104,35 @@ class GameOverScreen:
             return _SAVE_REJECTED if accepted is False else _SAVE_SAVED
         except (OSError, sqlite3.Error, TypeError, ValueError):
             return _SAVE_FAILED
+
+    def _save_official(self):
+        """Record this run against its tournament slot, exactly once.
+
+        The repository locks the slot and the attempt key, so re-opening the
+        summary cannot double-count a representative's score.
+        """
+        if self._leaderboard is None or self._competition is None:
+            return None
+        repository = getattr(self._leaderboard, "competition", None)
+        if repository is None:
+            self._official_error = "COMPETITION STORAGE UNAVAILABLE"
+            return None
+        try:
+            return repository.record_attempt(
+                team_id=int(self._competition.team_id),
+                slot=int(self._competition.slot),
+                attempt_key=str(self._competition.attempt_key),
+                player_name=str(self._stats.get("player_name", "PLAYER")),
+                score=int(self._stats.get("score", 0)),
+                wpm=float(self._stats.get("wpm", 0.0)),
+                accuracy=float(self._stats.get("accuracy", 0.0)),
+                max_combo=int(self._stats.get("max_combo", 0)),
+                waves=int(self._stats.get("waves", 0)),
+                enemies=int(self._stats.get("enemies", 0)),
+            )
+        except (OSError, sqlite3.Error, TypeError, ValueError) as exc:
+            self._official_error = str(exc) or "OFFICIAL SCORE NOT SAVED"
+            return None
 
     def _fetch_rank(self) -> int | None:
         """Return the leaderboard rank of this run's score, or None if unavailable."""
@@ -153,9 +188,22 @@ class GameOverScreen:
                         difficulty = str(
                             self._stats.get("start_difficulty", DIFFICULTY_EASY)
                         )
+                        if self._competition is not None:
+                            # Tournament runs go back to the hub, which offers
+                            # the next open representative slot.
+                            from screens.competition_screen import CompetitionScreen
+
+                            return CompetitionScreen(
+                                self._screen,
+                                self._settings,
+                                self._assets,
+                                self._audio,
+                                self._leaderboard,
+                                difficulty=difficulty,
+                            )
                         if mode == MODE_COMPETITION:
-                            # Competition is hot-seat: the next run belongs to
-                            # someone else, so ask for their name first.
+                            # Legacy hot-seat competition: the next run belongs
+                            # to someone else, so ask for their name first.
                             return NameInputScreen(
                                 self._screen,
                                 self._settings,
@@ -251,7 +299,16 @@ class GameOverScreen:
         cursor += ui.px(28)
         cursor = self._draw_tiles(panel, _SECONDARY, cursor, value_size=20, columns=4)
 
-        # WPM sparkline — drawn only when the history list is available.
+        if self._competition is not None:
+            self._draw_competition_block(panel, cursor)
+        else:
+            cursor = self._draw_sparkline(panel, cursor)
+
+        self._draw_save_status(panel)
+
+    def _draw_sparkline(self, panel: pygame.Rect, cursor: int) -> int:
+        """WPM history graph, when the run recorded one and there is room."""
+        ui = self._ui
         wpm_history = self._stats.get("wpm_history", [])
         if wpm_history and hasattr(ui, "wpm_sparkline"):
             cursor += ui.px(10)
@@ -264,8 +321,97 @@ class GameOverScreen:
                 panel.width - ui.px(56), ui.px(36),
             )
             ui.wpm_sparkline(self._screen, spark_rect, wpm_history, colour=NEON_CYAN)
+            cursor = spark_rect.bottom
+        return cursor
 
-        self._draw_save_status(panel)
+    def _draw_competition_block(self, panel: pygame.Rect, top: int) -> int:
+        """Team progress, Team to Beat and any match this attempt settled."""
+        ui = self._ui
+        context = self._competition
+        official = self._official
+        left = panel.x + ui.px(28)
+        right = panel.right - ui.px(28)
+        cursor = top + ui.px(12)
+        ui.section_label(
+            self._screen, "TOURNAMENT RESULT", left, cursor
+        )
+        cursor += ui.px(20)
+        ui.text(
+            self._screen,
+            f"TEAM  {str(context.team_name)[:22]}   //   REP {context.slot}",
+            15, TEXT_BRIGHT, left, cursor, bold=True, anchor="topleft",
+        )
+        cursor += ui.px(22)
+
+        if official is not None and official.accepted:
+            if official.team_finalized and official.team_total is not None:
+                progress = (
+                    f"TEAM TOTAL  {official.team_total:,}   ·   "
+                    "ALL 5 REPRESENTATIVES FINISHED"
+                )
+                colour = NEON_GREEN
+            else:
+                progress = (
+                    f"TEAM PROGRESS  {official.team_completed}/5   ·   "
+                    "TOTAL UNLOCKS AT 5/5"
+                )
+                colour = NEON_CYAN
+            ui.text(
+                self._screen, progress, 13, colour, left, cursor,
+                bold=True, anchor="topleft",
+            )
+            cursor += ui.px(19)
+            ui.text(
+                self._screen, "OFFICIAL SCORE RECORDED", 11, NEON_GREEN,
+                left, cursor, bold=True, anchor="topleft",
+            )
+        elif official is not None:
+            ui.text(
+                self._screen, "ALREADY COUNTED — NO DOUBLE SCORING", 13,
+                NEON_ORANGE, left, cursor, bold=True, anchor="topleft",
+            )
+        else:
+            ui.text(
+                self._screen,
+                f"OFFICIAL SCORE NOT SAVED  {self._official_error}"[:70],
+                12, NEON_RED, left, cursor, bold=True, anchor="topleft",
+            )
+        cursor += ui.px(20)
+
+        if official is not None:
+            leader_name = official.team_to_beat_name or "—"
+            leader_score = official.team_to_beat_score
+        else:
+            leader_name = str(getattr(context, "target_name", "") or "—")
+            leader_score = getattr(context, "target_score", None)
+        leader_score_text = f"{leader_score:,}" if leader_score is not None else "—"
+        ui.text(
+            self._screen, f"TEAM TO BEAT  {leader_name[:20]}", 12, NEON_YELLOW,
+            left, cursor, bold=True, anchor="topleft",
+        )
+        ui.text(
+            self._screen, leader_score_text, 12, NEON_YELLOW,
+            right, cursor, bold=True, anchor="topright",
+        )
+        cursor += ui.px(17)
+
+        notice = official.notice if official is not None else ""
+        if notice:
+            ui.text(
+                self._screen, notice[:58], 10, NEON_ORANGE,
+                left, cursor, bold=True, anchor="topleft",
+            )
+            cursor += ui.px(15)
+
+        if official is not None and official.resolved_matches:
+            match = official.resolved_matches[-1]
+            ui.text(
+                self._screen,
+                f"{match.round_label}: {match.winner_name} WINS"[:58],
+                10, NEON_GREEN, left, cursor, bold=True, anchor="topleft",
+            )
+            cursor += ui.px(15)
+        return cursor
 
     def _draw_tiles(
         self,
@@ -327,11 +473,12 @@ class GameOverScreen:
 
     def _draw_footer_hint(self) -> None:
         ui = self._ui
-        replay = (
-            "NEXT PLAYER"
-            if str(self._stats.get("mode", "")) == MODE_COMPETITION
-            else "PLAY AGAIN"
-        )
+        if self._competition is not None:
+            replay = "COMPETITION HUB"
+        elif str(self._stats.get("mode", "")) == MODE_COMPETITION:
+            replay = "NEXT PLAYER"
+        else:
+            replay = "PLAY AGAIN"
         ui.chips(
             self._screen,
             [("R", replay), ("M / ESC", "MAIN MENU")],

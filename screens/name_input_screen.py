@@ -29,6 +29,7 @@ class NameInputScreen:
         leaderboard,
         mode,
         difficulty: str | None = None,
+        competition=None,
     ):
         self._screen = screen
         self._settings = settings
@@ -37,6 +38,7 @@ class NameInputScreen:
         self._leaderboard = leaderboard
         self._mode = mode
         self._difficulty = difficulty
+        self._competition = competition
         self._name = ""
         self._max_length = 32
         self._tick = 0.0
@@ -76,6 +78,19 @@ class NameInputScreen:
 
     def _handle_key(self, event: pygame.event.Event):
         if event.key == pygame.K_ESCAPE:
+            if self._competition is not None:
+                # In tournament play the hub is the right place to back out to;
+                # the tournament itself stays untouched.
+                from screens.competition_screen import CompetitionScreen
+
+                return CompetitionScreen(
+                    self._screen,
+                    self._settings,
+                    self._assets,
+                    self._audio,
+                    self._leaderboard,
+                    difficulty=self._difficulty,
+                )
             from screens.main_menu import MainMenuScreen
 
             return MainMenuScreen(
@@ -99,6 +114,7 @@ class NameInputScreen:
                 self._mode,
                 name,
                 self._difficulty,
+                competition=self._competition,
             )
         if event.key == pygame.K_BACKSPACE:
             self._name = self._name[:-1]
@@ -125,12 +141,23 @@ class NameInputScreen:
             fill=PANEL_BG, alpha=238, border=HAIRLINE_DIM,
             accent=NEON_CYAN, glow=0.3 + 0.2 * pulse(self._tick, 1.5),
         )
-        ui.text(
-            self._screen, "ENTER PLAYER NAME", 30, TEXT_BRIGHT, box.centerx,
-            box.y + ui.px(30), bold=True, anchor="midtop", glow=NEON_CYAN,
+        title = (
+            "ENTER REPRESENTATIVE NAME"
+            if self._competition is not None
+            else "ENTER PLAYER NAME"
         )
         ui.text(
-            self._screen, f"MODE   //   {self._mode.upper()}", 13, TEXT_DIM,
+            self._screen, title, 28, TEXT_BRIGHT, box.centerx,
+            box.y + ui.px(30), bold=True, anchor="midtop", glow=NEON_CYAN,
+        )
+        subtitle = f"MODE   //   {self._mode.upper()}"
+        if self._competition is not None:
+            subtitle = (
+                f"{self._competition.team_name.upper()}   //   "
+                f"REPRESENTATIVE {self._competition.slot}"
+            )
+        ui.text(
+            self._screen, subtitle, 13, TEXT_DIM,
             box.centerx, box.y + ui.px(70), anchor="midtop",
         )
         ui.divider(

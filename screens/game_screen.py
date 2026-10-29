@@ -37,6 +37,7 @@ class GameScreen:
         mode: str,
         player_name: str = "PLAYER",
         difficulty: str | None = None,
+        competition=None,
     ) -> None:
         self._screen = screen
         self._assets = assets
@@ -45,6 +46,7 @@ class GameScreen:
         self._leaderboard = leaderboard
         self._mode = mode
         self._player_name = player_name
+        self._competition = competition
         self._tick = 0.0
         self._game: Game | None = None
         self._error: str | None = None
@@ -60,6 +62,7 @@ class GameScreen:
                 player_name=player_name,
                 difficulty=difficulty,
                 leaderboard=leaderboard,
+                competition=competition,
             )
         except (ContentError, OSError, ValueError) as exc:
             self._error = str(exc)
@@ -133,6 +136,7 @@ class GameScreen:
                         self._audio,
                         self._leaderboard,
                         self._game.stats(),
+                        competition=self._competition,
                     )
             pygame.display.flip()
 

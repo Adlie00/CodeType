@@ -78,6 +78,7 @@ class LeaderboardScreen:
             getattr(leaderboard, "last_player_name", "") or ""
         )
         self._rows = self._load_rows()
+        self._scroll = 0
         self._confirm_reset = False
         self._notice = ""
         self._notice_timer = 0.0
@@ -156,11 +157,24 @@ class LeaderboardScreen:
                     continue
                 if event.key == pygame.K_r:
                     self._rows = self._load_rows()
+                    self._scroll = 0
                     self._set_notice("REFRESHED")
                 if event.key == pygame.K_s:
                     self._sort_index = (self._sort_index + 1) % len(self._sort_options)
                     self._rows = self._load_rows()
+                    self._scroll = 0
                     self._set_notice(f"SORT  {self._sort_options[self._sort_index].upper()}")
+                # Competition shows 5 teams plus up to 25 representatives, more
+                # than fits on a 720p panel, so it gets a scroll window.
+                if self._competition_view() and event.key in (
+                    pygame.K_UP, pygame.K_DOWN,
+                    pygame.K_PAGEUP, pygame.K_PAGEDOWN,
+                ):
+                    step = 1 if event.key in (pygame.K_UP, pygame.K_DOWN) else self._row_capacity()
+                    if event.key in (pygame.K_UP, pygame.K_PAGEUP):
+                        step = -step
+                    self._scroll_rows(step)
+                    continue
                 # F opens the mode dropdown; 1–4 pick a mode without opening it.
                 if event.key == pygame.K_f:
                     self._open_filter()
@@ -208,6 +222,7 @@ class LeaderboardScreen:
         self._filter_index = max(0, min(index, len(_FILTER_OPTIONS) - 1))
         self._filter_hover = self._filter_index
         self._rows = self._load_rows()
+        self._scroll = 0
         self._set_notice(f"FILTER  {_FILTER_LABELS[self._filter_index]}")
 
     def _commit_filter(self, index: int) -> None:
@@ -281,6 +296,10 @@ class LeaderboardScreen:
             return []
         try:
             mode_filter = _FILTER_OPTIONS[self._filter_index]
+            if mode_filter == MODE_COMPETITION:
+                competition_rows = self._competition_rows()
+                if competition_rows is not None:
+                    return competition_rows
             sort_by = self._sort_options[self._sort_index]
             # get_top accepts an optional mode keyword; fall back for older builds.
             if mode_filter is not None and hasattr(self._leaderboard, "get_top"):
@@ -294,6 +313,59 @@ class LeaderboardScreen:
             return self._leaderboard.get_top(10, sort_by)
         except (OSError, sqlite3.Error):
             return []
+
+    def _competition_rows(self) -> list[dict[str, object]] | None:
+        """Team totals followed by individual representative scores.
+
+        Returns None when the backend has no competition repository or no
+        tournament has been created, so the normal top-10 path still applies.
+        """
+        board = getattr(self._leaderboard, "competition", None)
+        if board is None:
+            return None
+        try:
+            team_rows, rep_rows = board.leaderboard_rows()
+        except (OSError, sqlite3.Error, AttributeError):
+            return None
+        if not team_rows:
+            return None
+        rows: list[dict[str, object]] = []
+        for rank, row in enumerate(team_rows, start=1):
+            entry = dict(row)
+            entry["rank_label"] = f"T{rank}"
+            entry["display_name"] = str(row.get("team_name", ""))[:18]
+            entry["mode_label"] = f"{int(row.get('completed', 0))}/5"
+            rows.append(entry)
+        for rank, row in enumerate(rep_rows, start=1):
+            entry = dict(row)
+            entry["rank_label"] = f"R{rank}"
+            entry["display_name"] = (
+                f"{str(row.get('team_name', ''))[:10]} / "
+                f"{str(row.get('player_name', 'REP'))[:14]}"
+            )
+            entry["mode_label"] = f"R{int(row.get('slot', 0))}"
+            rows.append(entry)
+        return rows
+
+    def _competition_view(self) -> bool:
+        return (
+            _FILTER_OPTIONS[self._filter_index] == MODE_COMPETITION
+            and any("kind" in row for row in self._rows)
+        )
+
+    def _rows_top(self, table: pygame.Rect) -> int:
+        return table.y + self._ui.px(96) + self._ui.px(26) + self._ui.px(26)
+
+    def _row_capacity(self) -> int:
+        table = self._table_rect()
+        row_height = max(20, self._ui.px(34))
+        available = table.bottom - self._ui.px(60) - self._rows_top(table)
+        return max(1, int(available // row_height))
+
+    def _scroll_rows(self, delta: int) -> None:
+        capacity = self._row_capacity()
+        limit = max(0, len(self._rows) - capacity)
+        self._scroll = max(0, min(limit, self._scroll + delta))
 
     @staticmethod
     def _number(row: dict[str, object], key: str, default: float = 0.0) -> float:
@@ -339,7 +411,12 @@ class LeaderboardScreen:
             bold=True, anchor="midtop", glow=NEON_CYAN,
         )
         # Subtitle: the active sort. The mode filter lives in the dropdown.
-        subtitle = f"SORTED BY  {self._sort_options[self._sort_index].upper()}"
+        competition = self._competition_view()
+        subtitle = (
+            "TEAM TOTALS THEN REPRESENTATIVE SCORES"
+            if competition
+            else f"SORTED BY  {self._sort_options[self._sort_index].upper()}"
+        )
         ui.text(
             self._screen, subtitle,
             13, TEXT_DIM, table.centerx, table.y + ui.px(66), anchor="midtop",
@@ -349,7 +426,9 @@ class LeaderboardScreen:
         # holds from a 4K panel down to a small window.
         head_y = table.y + ui.px(96)
         ui.section_label(
-            self._screen, "TOP 10", table.x + ui.px(24), head_y
+            self._screen,
+            "TEAM TOTALS + REPS" if competition else "TOP 10",
+            table.x + ui.px(24), head_y,
         )
         header_y = head_y + ui.px(26)
         for label, fraction, align in _COLUMNS:
@@ -448,18 +527,24 @@ class LeaderboardScreen:
         # Never draw a row past the panel: a short window shows fewer entries
         # rather than spilling over the footer.
         capacity = max(1, int(available // row_height))
+        total = len(self._rows)
+        self._scroll = max(0, min(max(0, total - capacity), self._scroll))
+        visible = self._rows[self._scroll:self._scroll + capacity]
+        competition = self._competition_view()
 
-        for index, row in enumerate(self._rows[:capacity], start=1):
-            y = top + (index - 1) * row_height
+        for offset, row in enumerate(visible):
+            position = self._scroll + offset + 1
+            y = top + offset * row_height
             rect = pygame.Rect(table.x + ui.px(16), y, table.width - ui.px(32), row_height)
+            is_team = str(row.get("kind", "")) == "team"
 
-            name = str(row.get("player_name", "PLAYER"))[:18]
+            name = str(row.get("display_name", row.get("player_name", "PLAYER")))[:24]
             is_pb = bool(
                 self._last_player
                 and name.upper() == self._last_player.upper()
             )
 
-            if index == 1:
+            if position == 1:
                 # Leader gets a gold wash.
                 wash = pygame.Surface(rect.size, pygame.SRCALPHA)
                 wash.fill((*NEON_YELLOW, 18))
@@ -471,28 +556,40 @@ class LeaderboardScreen:
                 self._screen.blit(wash, rect.topleft)
                 rail = pygame.Rect(rect.x, rect.y, ui.px(3), rect.height)
                 pygame.draw.rect(self._screen, NEON_CYAN, rail, border_radius=2)
-            elif index % 2 == 0:
+            elif is_team:
+                # Every team total sits on its own band, so the two sections
+                # separate at a glance.
+                wash = pygame.Surface(rect.size, pygame.SRCALPHA)
+                wash.fill((*NEON_YELLOW, 10))
+                self._screen.blit(wash, rect.topleft)
+            elif position % 2 == 0:
                 wash = pygame.Surface(rect.size, pygame.SRCALPHA)
                 wash.fill((255, 255, 255, 6))
                 self._screen.blit(wash, rect.topleft)
 
-            colour = _RANK_COLOURS[index - 1] if index <= 3 else TEXT_BRIGHT
+            if competition:
+                colour = NEON_YELLOW if is_team else TEXT_BRIGHT
+            else:
+                colour = _RANK_COLOURS[position - 1] if position <= 3 else TEXT_BRIGHT
             mode_str = str(row.get("mode", "campaign")).lower()
-            mode_label = mode_str.upper()[:10]
-            mode_colour = _MODE_COLOURS.get(mode_str, TEXT_DIM)
+            mode_label = str(row.get("mode_label", mode_str.upper()[:10]))
+            mode_colour = NEON_YELLOW if is_team else _MODE_COLOURS.get(mode_str, TEXT_DIM)
+            rank_label = str(row.get("rank_label", position))
+            score = row.get("score")
+            score_text = f"{int(self._number(row, 'score')):,}" if score is not None else "—"
 
             cells = (
-                (str(index),                                    _COLUMNS[0][1], "left",  colour),
-                (name,                                          _COLUMNS[1][1], "left",  colour),
-                (f"{int(self._number(row, 'score')):,}",       _COLUMNS[2][1], "right", colour),
+                (rank_label,                                   _COLUMNS[0][1], "left",  colour),
+                (name,                                         _COLUMNS[1][1], "left",  colour),
+                (score_text,                                   _COLUMNS[2][1], "right", colour),
                 (f"{self._number(row, 'wpm'):.1f}",            _COLUMNS[3][1], "right", TEXT_DIM),
                 (f"{self._number(row, 'accuracy'):.1f}%",      _COLUMNS[4][1], "right", TEXT_DIM),
             )
             for value, fraction, align, cell_col in cells:
                 x = self._column_x(table, fraction)
                 ui.text(
-                    self._screen, value, 19 if index <= 3 else 18, cell_col, x,
-                    rect.centery, bold=index <= 3,
+                    self._screen, value, 19 if (is_team or position <= 3) else 18,
+                    cell_col, x, rect.centery, bold=is_team or position <= 3,
                     anchor="midright" if align == "right" else "midleft",
                 )
 
@@ -500,7 +597,16 @@ class LeaderboardScreen:
             mode_x = self._column_x(table, _COLUMNS[5][1])
             ui.text(
                 self._screen, mode_label, 12, mode_colour, mode_x,
-                rect.centery, bold=False, anchor="midright",
+                rect.centery, bold=is_team, anchor="midright",
+            )
+
+        # Scroll position, shown only when the competition list overflows.
+        if competition and total > capacity:
+            ui.text(
+                self._screen, f"{self._scroll + 1}–{min(total, self._scroll + capacity)}"
+                f" / {total}",
+                11, TEXT_DIM, table.right - ui.px(24),
+                table.bottom - ui.px(52), anchor="topright",
             )
 
     def _draw_empty(self, table: pygame.Rect, top: int) -> None:
@@ -522,16 +628,17 @@ class LeaderboardScreen:
                 self._screen, self._notice, 13, NEON_GREEN,
                 table.centerx, table.bottom - ui.px(56), bold=True, anchor="midtop",
             )
+        hints = [
+            ("S", "SORT"),
+            ("CLICK / F", "FILTER"),
+            ("R", "REFRESH"),
+            ("F12", "RESET"),
+            ("ESC", "BACK"),
+        ]
+        if self._competition_view() and len(self._rows) > self._row_capacity():
+            hints.insert(2, ("↑ ↓ / PG", "SCROLL"))
         ui.chips(
-            self._screen,
-            [
-                ("S", "SORT"),
-                ("CLICK / F", "FILTER"),
-                ("R", "REFRESH"),
-                ("F12", "RESET"),
-                ("ESC", "BACK"),
-            ],
-            table.bottom - ui.px(28),
+            self._screen, hints, table.bottom - ui.px(28),
         )
 
     def _draw_reset_prompt(self) -> None:
